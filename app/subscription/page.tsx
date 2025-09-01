@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
-import { Check, Star, Shield, Zap, Users, Building, ArrowRight } from 'lucide-react'
+import { Check, Star, Shield, Zap, Users, Building, ArrowRight, Calendar, Clock, Award, Rocket, Sparkles } from 'lucide-react'
 import { Header, Footer } from '../../components/layout'
 import { AuthModal } from '../../components/auth'
 
@@ -17,308 +17,249 @@ const SubscriptionPage = () => {
     }
   }, [openAuthModal])
 
-  const plans = [
-    {
-      name: 'Пробный период',
-      price: '0 ₽',
-      period: '14 дней',
-      description: 'Попробуйте все возможности сервиса без ограничений',
-      features: [
-        'До 5 классов',
-        'Базовые настройки',
-        'Экспорт в PDF',
-        'Поддержка по email'
-      ],
-      cta: 'Начать работу',
-      popular: false
-    },
-    {
-      name: 'Pro: Годовой',
-      price: '2990 ₽',
-      period: 'в год',
-      description: 'Полный доступ для одной школы на год',
-      features: [
-        'Неограниченное количество классов',
-        'Все настройки и правила',
-        'Приоритетная поддержка',
-        'API доступ',
-        'Резервное копирование',
-        'Аналитика и отчёты'
-      ],
-      cta: 'Оформить подписку',
-      popular: true,
-      savings: 'Экономия 40%'
-    },
-    {
-      name: 'Организация/Муниципалитет',
-      price: 'По запросу',
-      period: 'индивидуально',
-      description: 'Корпоративные решения для нескольких школ',
-      features: [
-        'Множественные школы',
-        'Централизованное управление',
-        'Индивидуальная настройка',
-        'Обучение персонала',
-        'Техническая поддержка 24/7',
-        'SLA гарантии'
-      ],
-      cta: 'Связаться с нами',
-      popular: false
-    }
-  ]
-
-  const comparisonTable = [
-    {
-      feature: 'Количество классов',
-      trial: 'До 5',
-      pro: 'Неограниченно',
-      org: 'Неограниченно'
-    },
-    {
-      feature: 'Настройка правил',
-      trial: 'Базовые',
-      pro: 'Полные',
-      org: 'Индивидуальные'
-    },
-    {
-      feature: 'Экспорт форматов',
-      trial: 'PDF',
-      pro: 'PDF, Excel, Word',
-      org: 'Все форматы + API'
-    },
-    {
-      feature: 'Поддержка',
-      trial: 'Email',
-      pro: 'Email + Чат',
-      org: '24/7 + Телефон'
-    },
-    {
-      feature: 'Резервное копирование',
-      trial: 'Нет',
-      pro: 'Автоматическое',
-      org: 'Автоматическое + Ручное'
-    }
-  ]
+  const subscription = {
+    name: 'Годовая подписка',
+    price: '9999 ₽',
+    period: 'в год',
+    originalPrice: '14990 ₽',
+    savings: 'Экономия 33%',
+    description: 'Полный доступ ко всем возможностям УмноеРасписание на целый год',
+    features: [
+      'Неограниченное количество классов и учителей',
+      'Все настройки и правила планирования',
+      'Приоритетная поддержка 24/7',
+      'API доступ для интеграций',
+      'Автоматическое резервное копирование',
+      'Расширенная аналитика и отчёты',
+      'Обновления и новые функции',
+      'Обучение персонала включено'
+    ],
+    highlights: [
+      {
+        icon: Shield,
+        title: 'Безопасность',
+        description: 'Ваши данные защищены по стандартам ISO 27001'
+      },
+      {
+        icon: Clock,
+        title: 'Экономия времени',
+        description: '90% времени экономии на составлении расписаний'
+      },
+      {
+        icon: Users,
+        title: 'Поддержка',
+        description: 'Персональный менеджер и техническая поддержка'
+      },
+      {
+        icon: Rocket,
+        title: 'Развитие',
+        description: 'Постоянные обновления и новые возможности'
+      }
+    ]
+  }
 
   return (
     <>
-      <div className="min-h-screen bg-gray-50">
+      <main className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100">
         <Header onOpenAuth={(returnTo, checkoutIntent) => openAuthModal(returnTo, checkoutIntent)} />
         
-        {/* Hero Section */}
-        <section className="bg-white border-b">
-          <div className="container-custom py-16">
-            <div className="text-center max-w-4xl mx-auto">
-              <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-                Выберите подходящий план
+        {/* Hero секция */}
+        <section className="pt-20 pb-16">
+          <div className="container-custom text-center">
+            <div className="max-w-4xl mx-auto">
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-primary-500 to-primary-600 rounded-2xl mb-8 shadow-xl">
+                <Star className="w-10 h-10 text-white" aria-hidden="true" />
+              </div>
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 leading-tight">
+                Выберите идеальный план
               </h1>
-              <p className="text-xl text-gray-600 mb-8">
-                Начните с пробного периода или сразу переходите к полному функционалу
+              <p className="text-xl md:text-2xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+                Получите доступ ко всем возможностям УмноеРасписание и измените подход к планированию в вашей школе
               </p>
             </div>
           </div>
         </section>
 
-        {/* Plans Section */}
-        <section className="section-padding">
+        {/* Основной тариф */}
+        <section className="py-16">
           <div className="container-custom">
-            <div className="grid md:grid-cols-3 gap-8 mb-16">
-              {plans.map((plan, index) => (
-                <div
-                  key={index}
-                  className={`bg-white rounded-2xl shadow-lg p-8 relative ${
-                    plan.popular ? 'ring-2 ring-primary-500 scale-105' : ''
-                  }`}
-                >
-                  {plan.popular && (
-                    <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                      <span className="bg-primary-500 text-white px-4 py-2 rounded-full text-sm font-medium">
-                        Популярный
-                      </span>
+            <div className="max-w-4xl mx-auto">
+              <div className="relative">
+                {/* Фон с градиентом */}
+                <div className="absolute inset-0 bg-gradient-to-r from-primary-500 to-primary-600 rounded-3xl transform rotate-1 opacity-10"></div>
+                
+                {/* Основная карточка */}
+                <div className="relative bg-white rounded-3xl p-12 shadow-2xl border border-gray-100">
+                  {/* Бейдж популярности */}
+                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                    <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-6 py-2 rounded-full text-sm font-semibold shadow-lg">
+                      ⭐ Рекомендуемый выбор
                     </div>
-                  )}
-                  
-                  {plan.savings && (
-                    <div className="absolute -top-4 right-4">
-                      <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
-                        {plan.savings}
-                      </span>
-                    </div>
-                  )}
-
-                  <div className="text-center mb-6">
-                    <h3 className="text-2xl font-bold text-gray-900 mb-2">{plan.name}</h3>
-                    <div className="mb-2">
-                      <span className="text-4xl font-bold text-gray-900">{plan.price}</span>
-                      <span className="text-gray-600 ml-2">{plan.period}</span>
-                    </div>
-                    <p className="text-gray-600">{plan.description}</p>
                   </div>
 
-                  <ul className="space-y-3 mb-8">
-                    {plan.features.map((feature, featureIndex) => (
-                      <li key={featureIndex} className="flex items-center">
-                        <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
-                        <span className="text-gray-700">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  {/* Заголовок и цена */}
+                  <div className="text-center mb-12">
+                    <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+                      {subscription.name}
+                    </h2>
+                    <div className="flex items-center justify-center gap-4 mb-6">
+                      <div className="text-6xl md:text-7xl font-bold text-primary-600">
+                        {subscription.price}
+                      </div>
+                      <div className="text-xl text-gray-600">
+                        {subscription.period}
+                      </div>
+                    </div>
+                    
+                    {/* Экономия */}
+                    <div className="flex items-center justify-center gap-3 mb-6">
+                      <span className="text-lg text-gray-500 line-through">
+                        {subscription.originalPrice}
+                      </span>
+                      <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-semibold">
+                        {subscription.savings}
+                      </span>
+                    </div>
+                    
+                    <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+                      {subscription.description}
+                    </p>
+                  </div>
 
-                  <button
-                    onClick={() => openAuthModal(window.location.pathname, true)}
-                    className="w-full btn-primary py-3"
+                  {/* Кнопка подписки */}
+                  <div className="text-center mb-12">
+                    <button 
+                      onClick={() => openAuthModal('/subscription', true)}
+                      className="bg-gradient-to-r from-primary-500 to-primary-600 text-white font-bold text-xl py-4 px-12 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 transform"
+                    >
+                      Оформить подписку
+                      <ArrowRight className="inline-block ml-2 w-6 h-6" />
+                    </button>
+                    <p className="text-sm text-gray-500 mt-4">
+                      Без скрытых платежей • Можно отменить в любой момент
+                    </p>
+                  </div>
+
+                  {/* Возможности */}
+                  <div className="grid md:grid-cols-2 gap-8 mb-12">
+                    {subscription.features.map((feature, index) => (
+                      <div key={index} className="flex items-start space-x-3">
+                        <div className="flex-shrink-0 w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
+                          <Check className="w-4 h-4 text-green-600" aria-hidden="true" />
+                        </div>
+                        <span className="text-gray-700 leading-relaxed">{feature}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Дополнительные преимущества */}
+                  <div className="border-t border-gray-200 pt-8">
+                    <h3 className="text-xl font-semibold text-gray-900 mb-6 text-center">
+                      Дополнительные преимущества
+                    </h3>
+                    <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                      {subscription.highlights.map((highlight, index) => (
+                        <div key={index} className="text-center group">
+                          <div className="w-16 h-16 bg-gradient-to-r from-primary-100 to-primary-200 rounded-2xl mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                            <highlight.icon className="w-8 h-8 text-primary-600" aria-hidden="true" />
+                          </div>
+                          <h4 className="text-lg font-semibold text-gray-900 mb-2">
+                            {highlight.title}
+                          </h4>
+                          <p className="text-sm text-gray-600 leading-relaxed">
+                            {highlight.description}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* FAQ секция */}
+        <section className="py-16 bg-white">
+          <div className="container-custom">
+            <div className="max-w-4xl mx-auto">
+              <div className="text-center mb-12">
+                <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+                  Часто задаваемые вопросы
+                </h2>
+                <p className="text-xl text-gray-600">
+                  Ответы на популярные вопросы о подписке
+                </p>
+              </div>
+              
+              <div className="space-y-6">
+                <div className="bg-gray-50 rounded-2xl p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                    Можно ли отменить подписку?
+                  </h3>
+                  <p className="text-gray-600">
+                    Да, вы можете отменить подписку в любой момент. При отмене вы сохраните доступ до конца оплаченного периода.
+                  </p>
+                </div>
+                
+                <div className="bg-gray-50 rounded-2xl p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                    Что происходит после окончания подписки?
+                  </h3>
+                  <p className="text-gray-600">
+                    После окончания подписки вы можете продлить её или перейти на базовый тариф. Ваши данные сохраняются.
+                  </p>
+                </div>
+                
+                <div className="bg-gray-50 rounded-2xl p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                    Включена ли техническая поддержка?
+                  </h3>
+                  <p className="text-gray-600">
+                    Да, годовая подписка включает приоритетную поддержку 24/7 и персонального менеджера.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* CTA секция */}
+        <section className="py-16">
+          <div className="container-custom">
+            <div className="max-w-4xl mx-auto text-center">
+              <div className="bg-gradient-to-r from-primary-500 to-primary-600 rounded-3xl p-12 text-white shadow-2xl">
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-white bg-opacity-20 rounded-2xl mb-6">
+                  <Sparkles className="w-10 h-10" aria-hidden="true" />
+                </div>
+                <h2 className="text-3xl font-bold mb-4">
+                  Готовы изменить подход к планированию?
+                </h2>
+                <p className="text-xl text-primary-100 mb-8 max-w-2xl mx-auto">
+                  Присоединяйтесь к сотням школ, которые уже используют УмноеРасписание
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <button 
+                    onClick={() => openAuthModal('/subscription', true)}
+                    className="bg-white text-primary-600 font-semibold py-4 px-8 rounded-xl transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl"
                   >
-                    {plan.cta}
+                    Начать подписку
+                    <ArrowRight className="inline-block ml-2 w-5 h-5" />
+                  </button>
+                  <button 
+                    onClick={() => openAuthModal('/subscription', false)}
+                    className="bg-white bg-opacity-20 text-white font-semibold py-4 px-8 rounded-xl transition-all duration-300 hover:bg-opacity-30 hover:scale-105"
+                  >
+                    Узнать больше
                   </button>
                 </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Comparison Table */}
-        <section className="section-padding bg-white">
-          <div className="container-custom">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">
-                Сравнение планов
-              </h2>
-              <p className="text-xl text-gray-600">
-                Выберите план, который лучше всего подходит вашим потребностям
-              </p>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="border-b-2 border-gray-200">
-                    <th className="text-left py-4 px-6 font-semibold text-gray-900">Функция</th>
-                    <th className="text-center py-4 px-6 font-semibold text-gray-900">Пробный</th>
-                    <th className="text-center py-4 px-6 font-semibold text-gray-900">Pro</th>
-                    <th className="text-center py-4 px-6 font-semibold text-gray-900">Организация</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {comparisonTable.map((row, index) => (
-                    <tr key={index} className="border-b border-gray-100">
-                      <td className="py-4 px-6 font-medium text-gray-900">{row.feature}</td>
-                      <td className="py-4 px-6 text-center text-gray-700">{row.trial}</td>
-                      <td className="py-4 px-6 text-center text-gray-700">{row.pro}</td>
-                      <td className="py-4 px-6 text-center text-gray-700">{row.org}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
-        {/* Trust & Security */}
-        <section className="section-padding">
-          <div className="container-custom">
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-12 text-center">
-              <div className="max-w-3xl mx-auto">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Shield className="w-8 h-8 text-blue-600" />
-                </div>
-                <h2 className="text-3xl font-bold text-gray-900 mb-4">
-                  Безопасность и надёжность
-                </h2>
-                <p className="text-xl text-gray-600 mb-8">
-                  Ваши данные защищены современными стандартами шифрования. Мы работаем с образовательными учреждениями по всей России и знаем, как важно обеспечить безопасность информации.
-                </p>
-                <div className="grid md:grid-cols-3 gap-6 text-sm">
-                  <div className="flex items-center justify-center space-x-2">
-                    <Shield className="w-5 h-5 text-blue-600" />
-                    <span>SSL шифрование</span>
-                  </div>
-                  <div className="flex items-center justify-center space-x-2">
-                    <Zap className="w-5 h-5 text-blue-600" />
-                    <span>99.9% доступность</span>
-                  </div>
-                  <div className="flex items-center justify-center space-x-2">
-                    <Users className="w-5 h-5 text-blue-600" />
-                    <span>150+ школ доверяют</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* FAQ for Guests */}
-        <section className="section-padding bg-white">
-          <div className="container-custom">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">
-                Часто задаваемые вопросы
-              </h2>
-              <p className="text-xl text-gray-600">
-                Ответы на популярные вопросы о наших планах подписки
-              </p>
-            </div>
-
-            <div className="max-w-3xl mx-auto space-y-6">
-              <div className="border border-gray-200 rounded-lg p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                  Можно ли отменить подписку в любое время?
-                </h3>
-                <p className="text-gray-600">
-                  Да, вы можете отменить подписку в любое время. При отмене вы сохраните доступ до конца оплаченного периода.
-                </p>
-              </div>
-
-              <div className="border border-gray-200 rounded-lg p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                  Что происходит после окончания пробного периода?
-                </h3>
-                <p className="text-gray-600">
-                  После окончания пробного периода вам нужно будет выбрать платный план для продолжения работы с сервисом.
-                </p>
-              </div>
-
-              <div className="border border-gray-200 rounded-lg p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                  Есть ли скидки для образовательных учреждений?
-                </h3>
-                <p className="text-gray-600">
-                  Да, мы предоставляем специальные условия и скидки для школ, колледжей и других образовательных учреждений.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Final CTA */}
-        <section className="section-padding">
-          <div className="container-custom">
-            <div className="bg-gradient-to-r from-primary-500 to-primary-600 rounded-2xl p-12 text-center text-white">
-              <h2 className="text-3xl font-bold mb-4">
-                Готовы начать?
-              </h2>
-              <p className="text-xl mb-8 opacity-90">
-                Присоединяйтесь к более чем 150 школам, которые уже используют наш сервис
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <button
-                  onClick={() => openAuthModal(window.location.pathname, true)}
-                  className="bg-white text-primary-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors duration-200"
-                >
-                  Начать работу
-                </button>
-                <button
-                  onClick={() => openAuthModal(window.location.pathname, false)}
-                  className="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-primary-600 transition-colors duration-200"
-                >
-                  Связаться с нами
-                </button>
               </div>
             </div>
           </div>
         </section>
 
         <Footer />
-      </div>
+      </main>
 
       {/* Auth Modal */}
       <AuthModal

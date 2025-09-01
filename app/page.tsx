@@ -29,10 +29,16 @@ export default function Home() {
   useEffect(() => {
     if (window.location.hash) {
       const elementId = window.location.hash.substring(1)
-      // Небольшая задержка для полной загрузки страницы
-      setTimeout(() => {
-        smoothScrollTo(elementId, 80)
-      }, 100)
+      // Увеличиваем задержку для полной загрузки страницы и всех компонентов
+      const timer = setTimeout(() => {
+        try {
+          smoothScrollTo(elementId, 80)
+        } catch (error) {
+          console.warn('Error auto-scrolling to element:', error)
+        }
+      }, 300)
+      
+      return () => clearTimeout(timer)
     }
   }, [])
 

@@ -77,7 +77,13 @@ const Header = ({ onOpenAuth }: HeaderProps) => {
                   onClick={(e) => {
                     if (item.href.includes('#')) {
                       e.preventDefault()
-                      smoothScrollToHref(item.href)
+                      try {
+                        smoothScrollToHref(item.href)
+                      } catch (error) {
+                        console.warn('Navigation error:', error)
+                        // Fallback: обычный переход
+                        window.location.href = item.href
+                      }
                     }
                   }}
                   className="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors duration-200 cursor-pointer"
@@ -177,7 +183,13 @@ const Header = ({ onOpenAuth }: HeaderProps) => {
                   onClick={(e) => {
                     if (item.href.includes('#')) {
                       e.preventDefault()
-                      smoothScrollToHref(item.href)
+                      try {
+                        smoothScrollToHref(item.href)
+                      } catch (error) {
+                        console.warn('Mobile navigation error:', error)
+                        // Fallback: обычный переход
+                        window.location.href = item.href
+                      }
                     }
                     setIsMenuOpen(false)
                   }}

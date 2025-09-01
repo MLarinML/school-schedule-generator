@@ -1,16 +1,20 @@
 import { Mail, Phone, MapPin, ExternalLink } from 'lucide-react'
+import { smoothScrollToHref } from '../../lib/utils/smoothScroll'
 
 const Footer = () => {
   const footerLinks = {
     product: [
-            { name: 'Функционал', href: '#features' },
-      { name: 'Тарифы', href: '#pricing' },
-      { name: 'API', href: '#api' }
+      { name: 'Главная', href: '/#hero' },
+      { name: 'Возможности', href: '/#features' },
+      { name: 'Как это работает', href: '/#how-it-works' },
+      { name: 'Отзывы', href: '/#testimonials' },
+      { name: 'FAQ', href: '/#faq' },
+      { name: 'Тарифы', href: '/subscription' }
     ],
     support: [
-            { name: 'Документация', href: '#docs' },
-      { name: 'Статус сервиса', href: '#status' },
-      { name: 'Поддержка', href: '#support' }
+      { name: 'Поддержка', href: '/#faq' },
+      { name: 'Документация', href: '/#how-it-works' },
+      { name: 'Статус сервиса', href: '#status' }
     ],
     legal: [
       { name: 'Политика конфиденциальности', href: '#privacy' },
@@ -93,7 +97,13 @@ const Footer = () => {
                 <li key={link.name}>
                   <a 
                     href={link.href}
-                    className="text-gray-300 hover:text-white transition-colors duration-200"
+                    onClick={(e) => {
+                      if (link.href.includes('#')) {
+                        e.preventDefault()
+                        smoothScrollToHref(link.href)
+                      }
+                    }}
+                    className="text-gray-300 hover:text-white transition-colors duration-200 cursor-pointer"
                   >
                     {link.name}
                   </a>
@@ -109,7 +119,13 @@ const Footer = () => {
                 <li key={link.name}>
                   <a 
                     href={link.href}
-                    className="text-gray-300 hover:text-white transition-colors duration-200"
+                    onClick={(e) => {
+                      if (link.href.includes('#')) {
+                        e.preventDefault()
+                        smoothScrollToHref(link.href)
+                      }
+                    }}
+                    className="text-gray-300 hover:text-white transition-colors duration-200 cursor-pointer"
                   >
                     {link.name}
                   </a>
@@ -158,6 +174,19 @@ const Footer = () => {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Кнопка "Наверх" */}
+        <div className="text-center mb-8">
+          <button
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            className="inline-flex items-center justify-center w-12 h-12 bg-primary-600 hover:bg-primary-700 text-white rounded-full transition-all duration-300 hover:scale-110 shadow-lg"
+            aria-label="Прокрутить наверх"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+            </svg>
+          </button>
         </div>
 
         {/* Нижняя часть */}

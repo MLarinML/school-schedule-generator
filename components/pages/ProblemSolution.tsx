@@ -117,7 +117,7 @@ const ProblemSolution = ({ onOpenAuth }: ProblemSolutionProps) => {
   ]
 
   return (
-    <section className="section-padding bg-gradient-to-br from-gray-50 via-white to-gray-100" aria-labelledby="problem-solution-heading">
+    <section id="problem-solution" className="section-padding bg-gradient-to-br from-gray-50 via-white to-gray-100" aria-labelledby="problem-solution-heading">
       <div className="container-custom">
         {/* Заголовок с анимацией */}
         <div className={`text-center mb-20 transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>

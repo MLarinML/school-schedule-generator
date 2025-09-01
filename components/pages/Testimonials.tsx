@@ -28,7 +28,7 @@ const Testimonials = () => {
 
 
   return (
-    <section className="section-padding bg-gray-50" aria-labelledby="testimonials-heading">
+    <section id="testimonials" className="section-padding bg-gray-50" aria-labelledby="testimonials-heading">
       <div className="container-custom">
         <div className="text-center mb-16">
           <h2 

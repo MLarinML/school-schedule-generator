@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Menu, X, User, LogOut, Settings, Calendar } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
+import { smoothScrollToHref } from '../../lib/utils/smoothScroll'
 
 interface HeaderProps {
   onOpenAuth: (returnTo?: string, checkoutIntent?: boolean) => void
@@ -32,12 +33,13 @@ const Header = ({ onOpenAuth }: HeaderProps) => {
   }
 
   const navigationItems = [
-    { name: 'Главная', href: '/#features' },
+    { name: 'Главная', href: '/#hero' },
+    { name: 'Возможности', href: '/#features' },
+    { name: 'Как это работает', href: '/#how-it-works' },
+    { name: 'Отзывы', href: '/#testimonials' },
+    { name: 'FAQ', href: '/#faq' },
     { name: 'Цены', href: '/subscription' },
     ...(user ? [{ name: 'УмноеРасписание', href: '/schedule' }] : []),
-    { name: 'Как это работает', href: '/#docs' },
-    { name: 'Поддержка', href: '/#support' },
-    { name: 'Контакты', href: '/#contact' },
   ]
 
   return (
@@ -65,7 +67,13 @@ const Header = ({ onOpenAuth }: HeaderProps) => {
                 <a
                   key={item.name}
                   href={item.href}
-                  className="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors duration-200"
+                  onClick={(e) => {
+                    if (item.href.includes('#')) {
+                      e.preventDefault()
+                      smoothScrollToHref(item.href)
+                    }
+                  }}
+                  className="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors duration-200 cursor-pointer"
                 >
                   {item.name}
                 </a>
@@ -159,8 +167,14 @@ const Header = ({ onOpenAuth }: HeaderProps) => {
                 <a
                   key={item.name}
                   href={item.href}
-                  className="text-gray-700 hover:text-primary-600 block px-3 py-2 text-base font-medium"
-                  onClick={() => setIsMenuOpen(false)}
+                  onClick={(e) => {
+                    if (item.href.includes('#')) {
+                      e.preventDefault()
+                      smoothScrollToHref(item.href)
+                    }
+                    setIsMenuOpen(false)
+                  }}
+                  className="text-gray-700 hover:text-primary-600 block px-3 py-2 text-base font-medium cursor-pointer"
                 >
                   {item.name}
                 </a>

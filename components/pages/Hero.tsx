@@ -6,7 +6,7 @@ interface HeroProps {
 
 const Hero = ({ onOpenAuth }: HeroProps) => {
   return (
-    <section className="section-padding bg-gradient-to-br from-primary-50 to-blue-50" aria-labelledby="hero-heading">
+    <section id="hero" className="section-padding bg-gradient-to-br from-primary-50 to-blue-50" aria-labelledby="hero-heading">
       <div className="container-custom">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* Текстовый контент */}

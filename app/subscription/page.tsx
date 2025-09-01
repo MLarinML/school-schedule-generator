@@ -64,109 +64,109 @@ const SubscriptionPage = () => {
         <Header onOpenAuth={(returnTo, checkoutIntent) => openAuthModal(returnTo, checkoutIntent)} />
         
         {/* Hero секция */}
-        <section className="pt-20 pb-16">
+        <section className="pt-16 pb-12">
           <div className="container-custom text-center">
-            <div className="max-w-4xl mx-auto">
-              <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-primary-500 to-primary-600 rounded-2xl mb-8 shadow-xl">
-                <Star className="w-10 h-10 text-white" aria-hidden="true" />
+            <div className="max-w-3xl mx-auto">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-primary-500 to-primary-600 rounded-2xl mb-6 shadow-xl">
+                <Star className="w-8 h-8 text-white" aria-hidden="true" />
               </div>
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 leading-tight">
+              <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4 leading-tight">
                 Выберите идеальный план
               </h1>
-              <p className="text-xl md:text-2xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-                Получите доступ ко всем возможностям УмноеРасписание и измените подход к планированию в вашей школе
+              <p className="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto">
+                Получите доступ ко всем возможностям УмноеРасписание
               </p>
             </div>
           </div>
         </section>
 
         {/* Основной тариф */}
-        <section className="py-16">
+        <section className="py-12">
           <div className="container-custom">
-            <div className="max-w-4xl mx-auto">
+            <div className="max-w-3xl mx-auto">
               <div className="relative">
                 {/* Фон с градиентом */}
-                <div className="absolute inset-0 bg-gradient-to-r from-primary-500 to-primary-600 rounded-3xl transform rotate-1 opacity-10"></div>
+                <div className="absolute inset-0 bg-gradient-to-r from-primary-500 to-primary-600 rounded-2xl transform rotate-1 opacity-10"></div>
                 
                 {/* Основная карточка */}
-                <div className="relative bg-white rounded-3xl p-12 shadow-2xl border border-gray-100">
+                <div className="relative bg-white rounded-2xl p-8 shadow-xl border border-gray-100">
                   {/* Бейдж популярности */}
-                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-6 py-2 rounded-full text-sm font-semibold shadow-lg">
+                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                    <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-4 py-1 rounded-full text-xs font-semibold shadow-lg">
                       ⭐ Рекомендуемый выбор
                     </div>
                   </div>
 
                   {/* Заголовок и цена */}
-                  <div className="text-center mb-12">
-                    <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+                  <div className="text-center mb-8">
+                    <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">
                       {subscription.name}
                     </h2>
-                    <div className="flex items-center justify-center gap-4 mb-6">
-                      <div className="text-6xl md:text-7xl font-bold text-primary-600">
+                    <div className="flex items-center justify-center gap-3 mb-4">
+                      <div className="text-5xl md:text-6xl font-bold text-primary-600">
                         {subscription.price}
                       </div>
-                      <div className="text-xl text-gray-600">
+                      <div className="text-lg text-gray-600">
                         {subscription.period}
                       </div>
                     </div>
                     
                     {/* Экономия */}
-                    <div className="flex items-center justify-center gap-3 mb-6">
-                      <span className="text-lg text-gray-500 line-through">
+                    <div className="flex items-center justify-center gap-3 mb-4">
+                      <span className="text-base text-gray-500 line-through">
                         {subscription.originalPrice}
                       </span>
-                      <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-semibold">
+                      <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-semibold">
                         {subscription.savings}
                       </span>
                     </div>
                     
-                    <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+                    <p className="text-base text-gray-600 max-w-xl mx-auto">
                       {subscription.description}
                     </p>
                   </div>
 
                   {/* Кнопка подписки */}
-                  <div className="text-center mb-12">
+                  <div className="text-center mb-8">
                     <button 
                       onClick={() => openAuthModal('/subscription', true)}
-                      className="bg-gradient-to-r from-primary-500 to-primary-600 text-white font-bold text-xl py-4 px-12 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 transform"
+                      className="bg-gradient-to-r from-primary-500 to-primary-600 text-white font-bold text-lg py-3 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 transform"
                     >
                       Оформить подписку
-                      <ArrowRight className="inline-block ml-2 w-6 h-6" />
+                      <ArrowRight className="inline-block ml-2 w-5 h-5" />
                     </button>
-                    <p className="text-sm text-gray-500 mt-4">
+                    <p className="text-xs text-gray-500 mt-3">
                       Без скрытых платежей • Можно отменить в любой момент
                     </p>
                   </div>
 
                   {/* Возможности */}
-                  <div className="grid md:grid-cols-2 gap-8 mb-12">
+                  <div className="grid md:grid-cols-2 gap-4 mb-8">
                     {subscription.features.map((feature, index) => (
-                      <div key={index} className="flex items-start space-x-3">
-                        <div className="flex-shrink-0 w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
-                          <Check className="w-4 h-4 text-green-600" aria-hidden="true" />
+                      <div key={index} className="flex items-start space-x-2">
+                        <div className="flex-shrink-0 w-5 h-5 bg-green-100 rounded-full flex items-center justify-center">
+                          <Check className="w-3 h-3 text-green-600" aria-hidden="true" />
                         </div>
-                        <span className="text-gray-700 leading-relaxed">{feature}</span>
+                        <span className="text-sm text-gray-700 leading-relaxed">{feature}</span>
                       </div>
                     ))}
                   </div>
 
                   {/* Дополнительные преимущества */}
-                  <div className="border-t border-gray-200 pt-8">
-                    <h3 className="text-xl font-semibold text-gray-900 mb-6 text-center">
+                  <div className="border-t border-gray-200 pt-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">
                       Дополнительные преимущества
                     </h3>
-                    <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
                       {subscription.highlights.map((highlight, index) => (
                         <div key={index} className="text-center group">
-                          <div className="w-16 h-16 bg-gradient-to-r from-primary-100 to-primary-200 rounded-2xl mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                            <highlight.icon className="w-8 h-8 text-primary-600" aria-hidden="true" />
+                          <div className="w-12 h-12 bg-gradient-to-r from-primary-100 to-primary-200 rounded-xl mx-auto mb-3 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                            <highlight.icon className="w-6 h-6 text-primary-600" aria-hidden="true" />
                           </div>
-                          <h4 className="text-lg font-semibold text-gray-900 mb-2">
+                          <h4 className="text-sm font-semibold text-gray-900 mb-1">
                             {highlight.title}
                           </h4>
-                          <p className="text-sm text-gray-600 leading-relaxed">
+                          <p className="text-xs text-gray-600 leading-relaxed">
                             {highlight.description}
                           </p>
                         </div>
@@ -180,42 +180,42 @@ const SubscriptionPage = () => {
         </section>
 
         {/* FAQ секция */}
-        <section className="py-16 bg-white">
+        <section className="py-12 bg-white">
           <div className="container-custom">
-            <div className="max-w-4xl mx-auto">
-              <div className="text-center mb-12">
-                <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+            <div className="max-w-3xl mx-auto">
+              <div className="text-center mb-8">
+                <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">
                   Часто задаваемые вопросы
                 </h2>
-                <p className="text-xl text-gray-600">
+                <p className="text-base text-gray-600">
                   Ответы на популярные вопросы о подписке
                 </p>
               </div>
               
-              <div className="space-y-6">
-                <div className="bg-gray-50 rounded-2xl p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">
+              <div className="space-y-4">
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <h3 className="text-base font-semibold text-gray-900 mb-2">
                     Можно ли отменить подписку?
                   </h3>
-                  <p className="text-gray-600">
+                  <p className="text-sm text-gray-600">
                     Да, вы можете отменить подписку в любой момент. При отмене вы сохраните доступ до конца оплаченного периода.
                   </p>
                 </div>
                 
-                <div className="bg-gray-50 rounded-2xl p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <h3 className="text-base font-semibold text-gray-900 mb-2">
                     Что происходит после окончания подписки?
                   </h3>
-                  <p className="text-gray-600">
+                  <p className="text-sm text-gray-600">
                     После окончания подписки вы можете продлить её или перейти на базовый тариф. Ваши данные сохраняются.
                   </p>
                 </div>
                 
-                <div className="bg-gray-50 rounded-2xl p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <h3 className="text-base font-semibold text-gray-900 mb-2">
                     Включена ли техническая поддержка?
                   </h3>
-                  <p className="text-gray-600">
+                  <p className="text-sm text-gray-600">
                     Да, годовая подписка включает приоритетную поддержку 24/7 и персонального менеджера.
                   </p>
                 </div>
@@ -225,30 +225,30 @@ const SubscriptionPage = () => {
         </section>
 
         {/* CTA секция */}
-        <section className="py-16">
+        <section className="py-12">
           <div className="container-custom">
-            <div className="max-w-4xl mx-auto text-center">
-              <div className="bg-gradient-to-r from-primary-500 to-primary-600 rounded-3xl p-12 text-white shadow-2xl">
-                <div className="inline-flex items-center justify-center w-20 h-20 bg-white bg-opacity-20 rounded-2xl mb-6">
-                  <Sparkles className="w-10 h-10" aria-hidden="true" />
+            <div className="max-w-3xl mx-auto text-center">
+              <div className="bg-gradient-to-r from-primary-500 to-primary-600 rounded-2xl p-8 text-white shadow-xl">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-white bg-opacity-20 rounded-xl mb-4">
+                  <Sparkles className="w-8 h-8" aria-hidden="true" />
                 </div>
-                <h2 className="text-3xl font-bold mb-4">
+                <h2 className="text-2xl font-bold mb-3">
                   Готовы изменить подход к планированию?
                 </h2>
-                <p className="text-xl text-primary-100 mb-8 max-w-2xl mx-auto">
+                <p className="text-base text-primary-100 mb-6 max-w-xl mx-auto">
                   Присоединяйтесь к сотням школ, которые уже используют УмноеРасписание
                 </p>
-                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   <button 
                     onClick={() => openAuthModal('/subscription', true)}
-                    className="bg-white text-primary-600 font-semibold py-4 px-8 rounded-xl transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl"
+                    className="bg-white text-primary-600 font-semibold py-3 px-6 rounded-lg transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl"
                   >
                     Начать подписку
-                    <ArrowRight className="inline-block ml-2 w-5 h-5" />
+                    <ArrowRight className="inline-block ml-2 w-4 h-4" />
                   </button>
                   <button 
                     onClick={() => openAuthModal('/subscription', false)}
-                    className="bg-white bg-opacity-20 text-white font-semibold py-4 px-8 rounded-xl transition-all duration-300 hover:bg-opacity-30 hover:scale-105"
+                    className="bg-white bg-opacity-20 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 hover:bg-opacity-30 hover:scale-105"
                   >
                     Узнать больше
                   </button>

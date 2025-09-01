@@ -53,8 +53,15 @@ const Header = ({ onOpenAuth }: HeaderProps) => {
               className="flex items-center space-x-2 text-xl font-bold text-primary-600"
               aria-label="Главная страница - Генератор школьных расписаний"
             >
-              <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">Р</span>
+              <div className="relative w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
+                {/* Основной календарь */}
+                <svg className="w-5 h-5 text-white z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                {/* Стрелки автоматизации */}
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-400 to-purple-500 opacity-20 animate-pulse"></div>
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full animate-bounce"></div>
+                <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-green-400 rounded-full animate-ping"></div>
               </div>
               <span>УмноеРасписание</span>
             </a>

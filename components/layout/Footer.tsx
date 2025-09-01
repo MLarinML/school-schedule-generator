@@ -58,8 +58,15 @@ const Footer = () => {
           {/* Логотип и описание */}
           <div className="lg:col-span-2">
             <div className="flex items-center space-x-2 mb-6">
-              <div className="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">Р</span>
+              <div className="relative w-12 h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
+                {/* Основной календарь */}
+                <svg className="w-7 h-7 text-white z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                {/* Стрелки автоматизации */}
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-400 to-purple-500 opacity-20 animate-pulse"></div>
+                <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full animate-bounce"></div>
+                <div className="absolute -bottom-1 -left-1 w-3 h-3 bg-green-400 rounded-full animate-ping"></div>
               </div>
               <span className="text-2xl font-bold">УмноеРасписание</span>
             </div>

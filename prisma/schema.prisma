@@ -1,0 +1,157 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  String   @id @default(cuid())
+  email               String   @unique @map("email")
+  passwordHash        String   @map("password_hash")
+  passwordAlgo        String   @default("bcrypt") @map("password_algo")
+  passwordUpdatedAt   DateTime @default(now()) @map("password_updated_at")
+  isEmailVerified     Boolean  @default(false) @map("is_email_verified")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+  status              UserStatus @default(ACTIVE)
+  lastLoginAt         DateTime? @map("last_login_at")
+
+  // Relations
+  profile             UserProfile?
+  roles               UserRole[]
+  sessions            Session[]
+  emailVerifications  EmailVerification[]
+  passwordResets      PasswordReset[]
+  securityEvents      SecurityEvent[]
+
+  @@map("users")
+}
+
+model UserProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique @map("user_id")
+  fullName  String?  @map("full_name")
+  locale    String   @default("ru")
+  timezone  String   @default("Europe/Moscow")
+  avatarUrl String?  @map("avatar_url")
+
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+
+  // Relations
+  users       UserRole[]
+
+  @@map("roles")
+}
+
+model UserRole {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  roleId     String   @map("role_id")
+  assignedAt DateTime @default(now()) @map("assigned_at")
+
+  // Relations
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@map("user_roles")
+}
+
+model Session {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+  expiresAt  DateTime @map("expires_at")
+  lastSeenAt DateTime @default(now()) @map("last_seen_at")
+  ip         String?
+  userAgent  String?  @map("user_agent")
+  isRevoked  Boolean  @default(false) @map("is_revoked")
+
+  // Relations
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model EmailVerification {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("email_verifications")
+}
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_resets")
+}
+
+model SecurityEvent {
+  id        String   @id @default(cuid())
+  userId    String?  @map("user_id")
+  type      SecurityEventType @map("type")
+  createdAt DateTime @default(now()) @map("created_at")
+  ip        String?
+  userAgent String?  @map("user_agent")
+  metadata  String?  // JSON string
+
+  // Relations
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("security_events")
+}
+
+model RateLimit {
+  key            String   @id
+  windowStartsAt DateTime @map("window_starts_at")
+  windowEndsAt   DateTime @map("window_ends_at")
+  count          Int      @default(0)
+
+  @@map("rate_limits")
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+  PENDING_VERIFICATION
+}
+
+enum SecurityEventType {
+  LOGIN_SUCCESS
+  LOGIN_FAIL
+  LOGOUT
+  PASSWORD_RESET_REQUEST
+  PASSWORD_CHANGE
+  EMAIL_VERIFY
+  ACCOUNT_LOCKED
+  SUSPICIOUS_ACTIVITY
+}
+

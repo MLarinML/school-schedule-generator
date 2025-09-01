@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
-import { Check, Star, Shield, Zap, Users, Building, ArrowRight, Calendar, Clock, Award, Rocket, Sparkles } from 'lucide-react'
+import { Check, Star, Shield, Zap, Users, Building, ArrowRight, Calendar, Clock, Award, Rocket } from 'lucide-react'
 import { Header, Footer } from '../../components/layout'
 import { AuthModal } from '../../components/auth'
 
@@ -221,39 +221,7 @@ const SubscriptionPage = () => {
           </div>
         </section>
 
-        {/* CTA секция */}
-        <section className="py-12">
-          <div className="container-custom">
-            <div className="max-w-3xl mx-auto text-center">
-              <div className="bg-gradient-to-r from-primary-500 to-primary-600 rounded-2xl p-8 text-white shadow-xl">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-white bg-opacity-20 rounded-xl mb-4">
-                  <Sparkles className="w-8 h-8" aria-hidden="true" />
-                </div>
-                <h2 className="text-2xl font-bold mb-3">
-                  Готовы изменить подход к планированию?
-                </h2>
-                <p className="text-base text-primary-100 mb-6 max-w-xl mx-auto">
-                  Присоединяйтесь к сотням школ, которые уже используют УмноеРасписание
-                </p>
-                <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                  <button 
-                    onClick={() => openAuthModal('/subscription', true)}
-                    className="bg-white text-primary-600 font-semibold py-3 px-6 rounded-lg transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl"
-                  >
-                    Начать подписку
-                    <ArrowRight className="inline-block ml-2 w-4 h-4" />
-                  </button>
-                  <button 
-                    onClick={() => openAuthModal('/subscription', false)}
-                    className="bg-white bg-opacity-20 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 hover:bg-opacity-30 hover:scale-105"
-                  >
-                    Узнать больше
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+
 
         <Footer />
       </main>

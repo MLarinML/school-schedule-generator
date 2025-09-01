@@ -17,12 +17,23 @@ export const smoothScrollTo = (elementId: string, offset: number = 80) => {
  */
 export const smoothScrollToHref = (href: string, offset: number = 80) => {
   if (href.startsWith('#')) {
-    const elementId = href.substring(1)
-    smoothScrollTo(elementId, offset)
+    // Если ссылка только с хешем, проверяем, находимся ли мы на главной странице
+    if (window.location.pathname === '/') {
+      smoothScrollTo(href.substring(1), offset)
+    } else {
+      // Если не на главной, переходим на главную с хешем
+      window.location.href = `/${href}`
+    }
   } else if (href.includes('#')) {
     const [path, hash] = href.split('#')
     if (window.location.pathname === path || path === '/') {
-      smoothScrollTo(hash, offset)
+      // Если мы на той же странице или на главной
+      if (window.location.pathname === '/') {
+        smoothScrollTo(hash, offset)
+      } else {
+        // Если не на главной, переходим на главную с хешем
+        window.location.href = `/${href}`
+      }
     } else {
       // Если это другая страница, переходим на неё и затем прокручиваем
       window.location.href = href

@@ -12,6 +12,7 @@ import {
   FAQ
 } from '../components/pages'
 import { AuthModal } from '../components/auth'
+import { smoothScrollTo } from '../lib/utils/smoothScroll'
 
 export default function Home() {
   const { isAuthModalOpen, closeAuthModal, returnTo, checkoutIntent, openAuthModal } = useAuth()
@@ -23,6 +24,17 @@ export default function Home() {
       openAuthModal()
     }
   }, [openAuthModal])
+
+  // Автоматически прокручиваем к нужному блоку, если в URL есть хеш
+  useEffect(() => {
+    if (window.location.hash) {
+      const elementId = window.location.hash.substring(1)
+      // Небольшая задержка для полной загрузки страницы
+      setTimeout(() => {
+        smoothScrollTo(elementId, 80)
+      }, 100)
+    }
+  }, [])
 
   return (
     <>

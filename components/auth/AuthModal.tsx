@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Eye, EyeOff, Mail, Lock, User, AlertCircle, CheckCircle } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { Button, Input, Modal } from '../ui'
+import PasswordResetForm from './PasswordResetForm'
 
 interface AuthModalProps {
   isOpen: boolean
@@ -15,6 +16,7 @@ interface AuthModalProps {
 const AuthModal = ({ isOpen, onClose, returnTo, checkoutIntent }: AuthModalProps) => {
   const { login } = useAuth()
   const [isLogin, setIsLogin] = useState(true)
+  const [showPasswordReset, setShowPasswordReset] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
@@ -57,8 +59,35 @@ const AuthModal = ({ isOpen, onClose, returnTo, checkoutIntent }: AuthModalProps
           setError(result.error || 'Не удалось войти. Проверьте данные и попробуйте снова.')
         }
       } else {
-        // Регистрация (пока не реализована)
-        setError('Регистрация пока не доступна. Используйте существующий аккаунт.')
+        // Регистрация
+        const response = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email,
+            password,
+            firstName: name.split(' ')[0] || name,
+            lastName: name.split(' ').slice(1).join(' ') || ''
+          })
+        })
+
+        const data = await response.json()
+
+        if (response.ok) {
+          setSuccess('Аккаунт успешно создан! Теперь вы можете войти.')
+          // Переключаемся на форму входа
+          setTimeout(() => {
+            setIsLogin(true)
+            setEmail(email)
+            setPassword('')
+            setName('')
+            setSuccess('')
+          }, 2000)
+        } else {
+          setError(data.error || 'Не удалось создать аккаунт. Попробуйте снова.')
+        }
       }
     } catch (err) {
       setError('Произошла ошибка. Попробуйте снова.')
@@ -69,15 +98,36 @@ const AuthModal = ({ isOpen, onClose, returnTo, checkoutIntent }: AuthModalProps
 
   const handleToggleMode = () => {
     setIsLogin(!isLogin)
+    setShowPasswordReset(false)
     setError('')
     setSuccess('')
+  }
+
+  const handleShowPasswordReset = () => {
+    setShowPasswordReset(true)
+    setError('')
+    setSuccess('')
+  }
+
+  const handleBackToLogin = () => {
+    setShowPasswordReset(false)
+    setError('')
+    setSuccess('')
+  }
+
+  const handlePasswordResetSuccess = () => {
+    setSuccess('Ссылка для сброса пароля отправлена на ваш email!')
+    setTimeout(() => {
+      setShowPasswordReset(false)
+      setSuccess('')
+    }, 3000)
   }
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={isLogin ? 'Вход в аккаунт' : 'Создание аккаунта'}
+      title={showPasswordReset ? 'Сброс пароля' : (isLogin ? 'Вход в аккаунт' : 'Создание аккаунта')}
       size="md"
     >
       {/* Success/Error Messages */}
@@ -95,93 +145,96 @@ const AuthModal = ({ isOpen, onClose, returnTo, checkoutIntent }: AuthModalProps
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {!isLogin && (
-          <Input
-            label="Имя"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Введите ваше имя"
-            leftIcon={<User className="w-5 h-5" />}
-            required={!isLogin}
-          />
-        )}
-
-        <Input
-          label="Email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="your@email.com"
-          leftIcon={<Mail className="w-5 h-5" />}
-          required
+      {showPasswordReset ? (
+        <PasswordResetForm
+          onSuccess={handlePasswordResetSuccess}
+          onBackToLogin={handleBackToLogin}
         />
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {!isLogin && (
+            <Input
+              label="Имя"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Введите ваше имя"
+              leftIcon={<User className="w-5 h-5" />}
+              required={!isLogin}
+            />
+          )}
 
-        <Input
-          label="Пароль"
-          type={showPassword ? 'text' : 'password'}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="Введите пароль"
-          leftIcon={<Lock className="w-5 h-5" />}
-          rightIcon={
+          <Input
+            label="Email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="your@email.com"
+            leftIcon={<Mail className="w-5 h-5" />}
+            required
+          />
+
+          <Input
+            label="Пароль"
+            type={showPassword ? 'text' : 'password'}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Введите пароль"
+            leftIcon={<Lock className="w-5 h-5" />}
+            rightIcon={
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            }
+            required
+          />
+
+          {isLogin && (
+            <div className="text-right">
+              <button
+                type="button"
+                onClick={handleShowPasswordReset}
+                className="text-sm text-primary-600 hover:text-primary-700 transition-colors duration-200"
+              >
+                Забыли пароль?
+              </button>
+            </div>
+          )}
+
+          <Button
+            type="submit"
+            isLoading={isLoading}
+            className="w-full"
+            size="lg"
+          >
+            {isLogin ? 'Войти' : 'Создать аккаунт'}
+          </Button>
+
+          <div className="text-center">
+            <span className="text-gray-600">
+              {isLogin ? 'Нет аккаунта?' : 'Уже есть аккаунт?'}
+            </span>
             <button
               type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="text-gray-400 hover:text-gray-600 transition-colors duration-200"
-              aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
+              onClick={handleToggleMode}
+              className="ml-2 text-primary-600 hover:text-primary-700 font-medium transition-colors duration-200"
             >
-              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              {isLogin ? 'Создать аккаунт' : 'Войти'}
             </button>
-          }
-          required
-        />
-
-        {isLogin && (
-          <div className="text-right">
-            <a
-              href="#forgot-password"
-              className="text-sm text-primary-600 hover:text-primary-700 transition-colors duration-200"
-            >
-              Забыли пароль?
-            </a>
           </div>
-        )}
 
-        <Button
-          type="submit"
-          isLoading={isLoading}
-          className="w-full"
-          size="lg"
-        >
-          {isLogin ? 'Войти' : 'Создать аккаунт'}
-        </Button>
-      </form>
-
-      {/* Toggle mode */}
-      <div className="mt-6 text-center">
-        <p className="text-gray-600">
-          {isLogin ? 'Нет аккаунта?' : 'Уже есть аккаунт?'}{' '}
-          <button
-            type="button"
-            onClick={handleToggleMode}
-            className="text-primary-600 hover:text-primary-700 font-medium transition-colors duration-200"
-          >
-            {isLogin ? 'Создать аккаунт' : 'Войти'}
-          </button>
-        </p>
-      </div>
-
-      {/* Additional info */}
-      <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-        <p className="text-gray-600 text-sm text-center">
-          {isLogin
-            ? 'Войдите, чтобы продолжить оформление подписки'
-            : 'Создайте аккаунт для доступа ко всем возможностям'
-          }
-        </p>
-      </div>
+          {!isLogin && (
+            <p className="text-sm text-gray-500 text-center">
+              Создайте аккаунт для доступа ко всем возможностям
+            </p>
+          )}
+        </form>
+      )}
     </Modal>
   )
 }

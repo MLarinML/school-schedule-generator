@@ -12,7 +12,7 @@ interface HeaderProps {
 const Header = ({ onOpenAuth }: HeaderProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false)
-  const { user, logout } = useAuth()
+  const { user, logout, isLoading } = useAuth()
 
   const handleToggleMenu = () => {
     setIsMenuOpen(!isMenuOpen)
@@ -39,8 +39,21 @@ const Header = ({ onOpenAuth }: HeaderProps) => {
     { name: 'Отзывы', href: '/#testimonials' },
     { name: 'FAQ', href: '/#faq' },
     { name: 'Цены', href: '/subscription' },
-    ...(user ? [{ name: 'УмноеРасписание', href: '/schedule' }] : []),
+    ...(user ? [{ name: 'Конструктор', href: '/schedule/schedule-builder', isSpecial: true }] : []),
   ]
+
+  // Создаем скелетон для навигации во время загрузки
+  const navigationSkeleton = [
+    { name: 'Главная', href: '/#hero' },
+    { name: 'Возможности', href: '/#features' },
+    { name: 'Как это работает', href: '/#how-it-works' },
+    { name: 'Отзывы', href: '/#testimonials' },
+    { name: 'FAQ', href: '/#faq' },
+    { name: 'Цены', href: '/subscription' },
+    ...(isLoading ? [{ name: 'Конструктор', href: '/schedule/schedule-builder', isSpecial: true }] : []),
+  ]
+
+  const itemsToRender = isLoading ? navigationSkeleton : navigationItems
 
   return (
     <header className="bg-white shadow-sm sticky top-0 z-50" role="banner">
@@ -69,8 +82,8 @@ const Header = ({ onOpenAuth }: HeaderProps) => {
 
           {/* Десктопная навигация */}
           <div className="hidden md:block">
-            <div className="ml-10 flex items-baseline space-x-8">
-              {navigationItems.map((item) => (
+            <div className="ml-10 flex items-baseline space-x-8 whitespace-nowrap">
+              {itemsToRender.map((item) => (
                 <a
                   key={item.name}
                   href={item.href}
@@ -86,8 +99,15 @@ const Header = ({ onOpenAuth }: HeaderProps) => {
                       }
                     }
                   }}
-                  className="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors duration-200 cursor-pointer"
+                  className={
+                    item.isSpecial
+                      ? "relative bg-gradient-to-r from-primary-500 to-primary-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-300 hover:from-primary-600 hover:to-primary-700 hover:scale-105 shadow-lg hover:shadow-xl cursor-pointer border-2 border-primary-300 whitespace-nowrap"
+                      : "text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors duration-200 cursor-pointer whitespace-nowrap"
+                  }
                 >
+                  {item.isSpecial && (
+                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full animate-pulse"></span>
+                  )}
                   {item.name}
                 </a>
               ))}
@@ -97,7 +117,13 @@ const Header = ({ onOpenAuth }: HeaderProps) => {
           {/* Кнопки входа */}
           <div className="hidden md:block flex items-center space-x-4">
             
-            {user ? (
+            {isLoading ? (
+              // Показываем скелетон во время загрузки
+              <div className="flex items-center space-x-2 p-2">
+                <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse"></div>
+                <div className="w-20 h-4 bg-gray-200 rounded animate-pulse"></div>
+              </div>
+            ) : user ? (
               <div className="relative">
                 <button
                   onClick={handleToggleAccountMenu}
@@ -106,10 +132,12 @@ const Header = ({ onOpenAuth }: HeaderProps) => {
                 >
                   <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center">
                     <span className="text-white font-bold text-sm">
-                      {user.firstName.charAt(0).toUpperCase()}
+                      {user.fullName ? user.fullName.charAt(0).toUpperCase() : user.email.charAt(0).toUpperCase()}
                     </span>
                   </div>
-                  <span className="text-gray-700 font-medium">{user.firstName}</span>
+                  <span className="text-gray-700 font-medium">
+                    {user.fullName ? user.fullName.split(' ')[0] : user.email.split('@')[0]}
+                  </span>
                 </button>
                 
                 {isAccountMenuOpen && (
@@ -176,7 +204,7 @@ const Header = ({ onOpenAuth }: HeaderProps) => {
             aria-label="Мобильная навигация"
           >
             <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white border-t">
-              {navigationItems.map((item) => (
+              {itemsToRender.map((item) => (
                 <a
                   key={item.name}
                   href={item.href}
@@ -193,14 +221,27 @@ const Header = ({ onOpenAuth }: HeaderProps) => {
                     }
                     setIsMenuOpen(false)
                   }}
-                  className="text-gray-700 hover:text-primary-600 block px-3 py-2 text-base font-medium cursor-pointer"
+                  className={
+                    item.isSpecial
+                      ? "relative bg-gradient-to-r from-primary-500 to-primary-600 text-white block px-4 py-3 text-base font-semibold rounded-lg transition-all duration-300 hover:from-primary-600 hover:to-primary-700 cursor-pointer border-2 border-primary-300 shadow-lg whitespace-nowrap"
+                      : "text-gray-700 hover:text-primary-600 block px-3 py-2 text-base font-medium cursor-pointer whitespace-nowrap"
+                  }
                 >
+                  {item.isSpecial && (
+                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full animate-pulse"></span>
+                  )}
                   {item.name}
                 </a>
               ))}
               <div className="pt-4 space-y-3">
-                
-                {user ? (
+                {isLoading ? (
+                  // Показываем скелетон во время загрузки для мобильного меню
+                  <div className="space-y-3">
+                    <div className="h-10 bg-gray-200 rounded-lg animate-pulse"></div>
+                    <div className="h-10 bg-gray-200 rounded-lg animate-pulse"></div>
+                    <div className="h-10 bg-gray-200 rounded-lg animate-pulse"></div>
+                  </div>
+                ) : user ? (
                   <>
                     <a
                       href="/account"

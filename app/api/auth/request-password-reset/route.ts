@@ -11,7 +11,7 @@ const emailService = new EmailService()
 export async function POST(request: NextRequest) {
   try {
     // Получаем IP адрес для rate limiting
-    const ip = request.ip || request.headers.get('x-forwarded-for') || 'unknown'
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
     
     // Проверяем rate limit для IP
     const ipRateLimit = await RateLimiter.checkIPLimit(ip, 'password_reset', {

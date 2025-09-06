@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     const { token, password } = validationResult.data
 
     // Получаем IP адрес
-    const ip = request.ip || request.headers.get('x-forwarded-for') || 'unknown'
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
 
     // Ищем токен сброса пароля
     const passwordReset = await prisma.passwordReset.findUnique({

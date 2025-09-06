@@ -17,10 +17,23 @@ export interface RateLimitResult {
 }
 
 export class RateLimiter {
-  private static defaultConfig: RateLimitConfig = {
-    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW || '900000'), // 15 минут
-    maxAttempts: parseInt(process.env.RATE_LIMIT_MAX_ATTEMPTS || '5'),
-    blockDurationMs: 900000 // 15 минут блокировки
+  private static getDefaultConfig(): RateLimitConfig {
+    // Для разработки - очень мягкие лимиты
+    const isDevelopment = process.env.NODE_ENV === 'development'
+    
+    if (isDevelopment) {
+      return {
+        windowMs: 3600000, // 60 минут
+        maxAttempts: 100,  // 100 попыток
+        blockDurationMs: 3600000 // 60 минут блокировки
+      }
+    }
+    
+    return {
+      windowMs: parseInt(process.env.RATE_LIMIT_WINDOW || '900000'), // 15 минут
+      maxAttempts: parseInt(process.env.RATE_LIMIT_MAX_ATTEMPTS || '5'),
+      blockDurationMs: parseInt(process.env.RATE_LIMIT_WINDOW || '900000') // Используем то же окно
+    }
   }
 
   /**
@@ -31,7 +44,7 @@ export class RateLimiter {
     action: string,
     config?: Partial<RateLimitConfig>
   ): Promise<RateLimitResult> {
-    const finalConfig = { ...this.defaultConfig, ...config }
+    const finalConfig = { ...this.getDefaultConfig(), ...config }
     const key = `ip:${action}:${ip}`
     
     return this.checkLimit(key, finalConfig)
@@ -45,7 +58,7 @@ export class RateLimiter {
     action: string,
     config?: Partial<RateLimitConfig>
   ): Promise<RateLimitResult> {
-    const finalConfig = { ...this.defaultConfig, ...config }
+    const finalConfig = { ...this.getDefaultConfig(), ...config }
     const key = `email:${action}:${email.toLowerCase()}`
     
     return this.checkLimit(key, finalConfig)
@@ -60,7 +73,7 @@ export class RateLimiter {
     action: string,
     config?: Partial<RateLimitConfig>
   ): Promise<RateLimitResult> {
-    const finalConfig = { ...this.defaultConfig, ...config }
+    const finalConfig = { ...this.getDefaultConfig(), ...config }
     const key = `combined:${action}:${ip}:${email.toLowerCase()}`
     
     return this.checkLimit(key, finalConfig)
@@ -73,6 +86,18 @@ export class RateLimiter {
     key: string,
     config: RateLimitConfig
   ): Promise<RateLimitResult> {
+    // Для разработки - отключаем rate limiting
+    const isDevelopment = process.env.NODE_ENV === 'development'
+    
+    if (isDevelopment) {
+      return {
+        allowed: true,
+        remaining: 100,
+        resetTime: new Date(Date.now() + 3600000), // 60 минут
+        blocked: false
+      }
+    }
+    
     const now = new Date()
     const windowStart = new Date(now.getTime() - config.windowMs)
     const blockExpiresAt = new Date(now.getTime() + (config.blockDurationMs || 0))

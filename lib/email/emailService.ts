@@ -10,6 +10,16 @@ export interface EmailConfig {
   from: string
 }
 
+export interface EmailProvider {
+  name: string
+  host: string
+  port: number
+  secure: boolean
+  requiresAuth: boolean
+  description: string
+  instructions: string[]
+}
+
 export interface EmailTemplate {
   subject: string
   html: string
@@ -20,23 +30,89 @@ export class EmailService {
   private transporter: nodemailer.Transporter
   private config: EmailConfig
 
+  // Популярные почтовые провайдеры
+  static readonly EMAIL_PROVIDERS: EmailProvider[] = [
+    {
+      name: 'Gmail',
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false,
+      requiresAuth: true,
+      description: 'Google Gmail - популярный почтовый сервис',
+      instructions: [
+        'Включите двухфакторную аутентификацию в настройках Google',
+        'Создайте пароль приложения в разделе "Безопасность"',
+        'Используйте пароль приложения, НЕ обычный пароль от Gmail'
+      ]
+    },
+    {
+      name: 'Yandex',
+      host: 'smtp.yandex.ru',
+      port: 465,
+      secure: true,
+      requiresAuth: true,
+      description: 'Яндекс.Почта - российский почтовый сервис',
+      instructions: [
+        'Включите двухфакторную аутентификацию в настройках Яндекса',
+        'Создайте пароль приложения в разделе "Безопасность"',
+        'Используйте пароль приложения, НЕ обычный пароль от Яндекса'
+      ]
+    },
+    {
+      name: 'Mail.ru',
+      host: 'smtp.mail.ru',
+      port: 465,
+      secure: true,
+      requiresAuth: true,
+      description: 'Mail.ru - популярный российский почтовый сервис',
+      instructions: [
+        'Включите двухфакторную аутентификацию в настройках Mail.ru',
+        'Создайте пароль приложения в разделе "Безопасность"',
+        'Используйте пароль приложения, НЕ обычный пароль от Mail.ru'
+      ]
+    },
+    {
+      name: 'Outlook/Hotmail',
+      host: 'smtp-mail.outlook.com',
+      port: 587,
+      secure: false,
+      requiresAuth: true,
+      description: 'Microsoft Outlook/Hotmail - корпоративный почтовый сервис',
+      instructions: [
+        'Включите двухфакторную аутентификацию в настройках Microsoft',
+        'Создайте пароль приложения в разделе "Безопасность"',
+        'Используйте пароль приложения, НЕ обычный пароль от Outlook'
+      ]
+    }
+  ]
+
   constructor() {
     this.config = {
       host: process.env.SMTP_HOST || 'smtp.gmail.com',
       port: parseInt(process.env.SMTP_PORT || '587'),
-      secure: false,
+      secure: process.env.SMTP_SECURE === 'true',
       user: process.env.SMTP_USER || '',
       pass: process.env.SMTP_PASS || '',
       from: process.env.SMTP_FROM || 'noreply@raspisanie.ru'
+    }
+
+    // Проверяем, что все необходимые переменные окружения установлены
+    if (!this.config.user || !this.config.pass) {
+      console.warn('Email service: SMTP credentials not configured. Email functionality will be disabled.')
+      console.warn('Please set SMTP_USER and SMTP_PASS environment variables.')
     }
 
     this.transporter = nodemailer.createTransport({
       host: this.config.host,
       port: this.config.port,
       secure: this.config.secure,
-      auth: {
+      auth: this.config.user && this.config.pass ? {
         user: this.config.user,
         pass: this.config.pass
+      } : undefined,
+      // Добавляем дополнительные настройки для Gmail
+      tls: {
+        rejectUnauthorized: false
       }
     })
   }
@@ -46,6 +122,12 @@ export class EmailService {
    */
   async sendEmail(to: string, template: EmailTemplate): Promise<boolean> {
     try {
+      // Проверяем, что email сервис настроен
+      if (!this.config.user || !this.config.pass) {
+        console.error('Email service not configured. Cannot send email.')
+        return false
+      }
+
       const mailOptions = {
         from: this.config.from,
         to,
@@ -55,9 +137,21 @@ export class EmailService {
       }
 
       await this.transporter.sendMail(mailOptions)
+      console.log(`Email sent successfully to ${to}`)
       return true
     } catch (error) {
       console.error('Failed to send email:', error)
+      
+      // Дополнительная информация об ошибке для отладки
+      if (error instanceof Error) {
+        if (error.message.includes('535-5.7.8')) {
+          console.error('Gmail authentication failed. Please check your App Password.')
+          console.error('Instructions: https://support.google.com/accounts/answer/185833')
+        } else if (error.message.includes('EAUTH')) {
+          console.error('SMTP authentication failed. Please check your credentials.')
+        }
+      }
+      
       return false
     }
   }
@@ -320,5 +414,63 @@ export class EmailService {
       console.error('SMTP connection failed:', error)
       return false
     }
+  }
+
+  /**
+   * Получает настройки для конкретного провайдера по email
+   */
+  static getProviderByEmail(email: string): EmailProvider | null {
+    const domain = email.split('@')[1]?.toLowerCase()
+    
+    if (!domain) return null
+
+    if (domain.includes('gmail.com') || domain.includes('googlemail.com')) {
+      return this.EMAIL_PROVIDERS.find(p => p.name === 'Gmail') || null
+    }
+    
+    if (domain.includes('yandex.ru') || domain.includes('ya.ru')) {
+      return this.EMAIL_PROVIDERS.find(p => p.name === 'Yandex') || null
+    }
+    
+    if (domain.includes('mail.ru') || domain.includes('inbox.ru') || domain.includes('bk.ru')) {
+      return this.EMAIL_PROVIDERS.find(p => p.name === 'Mail.ru') || null
+    }
+    
+    if (domain.includes('outlook.com') || domain.includes('hotmail.com') || domain.includes('live.com')) {
+      return this.EMAIL_PROVIDERS.find(p => p.name === 'Outlook/Hotmail') || null
+    }
+    
+    return null
+  }
+
+  /**
+   * Создает конфигурацию для конкретного провайдера
+   */
+  static createProviderConfig(provider: EmailProvider, user: string, pass: string): EmailConfig {
+    return {
+      host: provider.host,
+      port: provider.port,
+      secure: provider.secure,
+      user,
+      pass,
+      from: user
+    }
+  }
+
+  /**
+   * Обновляет конфигурацию транспорта
+   */
+  updateConfig(newConfig: EmailConfig): void {
+    this.config = { ...this.config, ...newConfig }
+    
+    this.transporter = nodemailer.createTransport({
+      host: this.config.host,
+      port: this.config.port,
+      secure: this.config.secure,
+      auth: {
+        user: this.config.user,
+        pass: this.config.pass
+      }
+    })
   }
 }

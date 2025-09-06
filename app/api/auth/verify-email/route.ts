@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     const { token } = validationResult.data
 
     // Получаем IP адрес
-    const ip = request.ip || request.headers.get('x-forwarded-for') || 'unknown'
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
 
     // Ищем токен верификации
     const verification = await prisma.emailVerification.findUnique({

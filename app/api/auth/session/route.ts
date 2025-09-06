@@ -59,15 +59,27 @@ export async function GET(request: NextRequest) {
     // Получаем роли пользователя
     const roles = session.user.roles.map(ur => ur.role.name)
 
+    // Разделяем fullName на firstName и lastName
+    const fullName = session.user.profile?.fullName || ''
+    const nameParts = fullName.split(' ')
+    const firstName = nameParts[0] || ''
+    const lastName = nameParts.slice(1).join(' ') || ''
+
     return NextResponse.json({
       user: {
         id: session.user.id,
         email: session.user.email,
         fullName: session.user.profile?.fullName,
+        firstName: session.user.firstName || firstName,
+        lastName: session.user.lastName || lastName,
+        schoolName: session.user.schoolName,
+        language: session.user.language,
         roles,
         isEmailVerified: session.user.isEmailVerified,
         status: session.user.status,
-        lastLoginAt: session.user.lastLoginAt
+        createdAt: session.user.createdAt.toISOString(),
+        lastSeenAt: session.user.lastSeenAt?.toISOString() || new Date().toISOString(),
+        lastLoginAt: session.user.lastLoginAt?.toISOString()
       },
       session: {
         id: session.id,

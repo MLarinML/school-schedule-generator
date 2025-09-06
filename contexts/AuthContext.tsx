@@ -55,31 +55,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const data = await response.json()
 
       if (response.ok) {
-        // Сначала обновляем состояние пользователя
+        // Обновляем состояние пользователя
         await checkAuth()
-        
-        // Если checkAuth не вернул пользователя, создаем временного пользователя
-        if (!user) {
-          // Создаем временного пользователя на основе email
-          const tempUser: User = {
-            id: 'temp',
-            email: email,
-            firstName: email.split('@')[0],
-            lastName: '',
-            isEmailVerified: true,
-            status: 'ACTIVE',
-            createdAt: new Date().toISOString(),
-            lastSeenAt: new Date().toISOString(),
-          }
-          setUser(tempUser)
-        }
         
         return { success: true }
       } else {
+        setIsLoading(false) // Сбрасываем состояние загрузки при неудачном входе
         return { success: false, error: data.error || 'Ошибка входа' }
       }
     } catch (error) {
       console.error('Login failed:', error)
+      setIsLoading(false) // Сбрасываем состояние загрузки при ошибке сети
       return { success: false, error: 'Ошибка сети' }
     }
   }

@@ -1,12 +1,17 @@
 export interface User {
   id: string
   email: string
-  firstName: string
-  lastName: string
+  fullName: string | null
+  firstName?: string
+  lastName?: string
+  schoolName?: string
+  language?: string
   isEmailVerified: boolean
   status: 'PENDING' | 'ACTIVE' | 'SUSPENDED'
   createdAt: string
   lastSeenAt: string
+  lastLoginAt?: string
+  roles: string[]
 }
 
 export interface UserProfile {

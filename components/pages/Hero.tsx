@@ -5,6 +5,7 @@ interface HeroProps {
 }
 
 const Hero = ({ onOpenAuth }: HeroProps) => {
+
   return (
     <section id="hero" className="section-padding bg-gradient-to-br from-primary-50 to-blue-50" aria-labelledby="hero-heading">
       <div className="container-custom">

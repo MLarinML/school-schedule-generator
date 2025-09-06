@@ -16,6 +16,6 @@ process.env.SMTP_PORT = '587'
 process.env.SMTP_USER = 'test@test.com'
 process.env.SMTP_PASS = 'test-password'
 process.env.SMTP_FROM = 'noreply@test.com'
-process.env.RATE_LIMIT_WINDOW = '900000'
-process.env.RATE_LIMIT_MAX_ATTEMPTS = '5'
+process.env.RATE_LIMIT_WINDOW = '3600000'
+process.env.RATE_LIMIT_MAX_ATTEMPTS = '50'
 

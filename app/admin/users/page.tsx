@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { 
@@ -32,7 +32,7 @@ interface User {
   roles: string[]
 }
 
-export default function AdminUsersPage() {
+function AdminUsersContent() {
   const { user, isLoading } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -327,5 +327,13 @@ export default function AdminUsersPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function AdminUsersPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <AdminUsersContent />
+    </Suspense>
   )
 }

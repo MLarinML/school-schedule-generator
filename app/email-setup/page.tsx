@@ -147,7 +147,7 @@ SMTP_FROM="${email}"`
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
+      <Header onOpenAuth={() => {}} />
       
       {/* Заголовок */}
       <div className="bg-white shadow-sm border-b">

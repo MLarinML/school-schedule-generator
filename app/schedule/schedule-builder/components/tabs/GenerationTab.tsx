@@ -1505,7 +1505,11 @@ export const GenerationTab = ({ onUpdateStatus }: GenerationTabProps) => {
       
       setGenerationResult({
         success: !hasCriticalErrors,
-        conflicts,
+        conflicts: conflicts.map(conflict => ({
+          type: conflict.type === 'elementary' || conflict.type === 'difficult_subjects' || conflict.type === 'resource_conflict' ? 'load' : conflict.type,
+          message: conflict.message,
+          severity: conflict.severity
+        })),
         studentSchedule,
         teacherSchedule
       })

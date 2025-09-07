@@ -335,7 +335,7 @@ export const ImportTab = ({ onUpdateStatus }: ImportTabProps) => {
             ) : (
               <>
                 <Upload className="w-6 h-6" />
-                <span>Выбрать Excel файл</span>
+                <span>Загрузить Excel</span>
               </>
             )}
           </label>

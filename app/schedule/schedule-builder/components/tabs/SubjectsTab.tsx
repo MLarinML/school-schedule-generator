@@ -423,7 +423,7 @@ export const SubjectsTab = ({ onUpdateStatus }: SubjectsTabProps) => {
               className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200"
             >
               <Upload className="w-4 h-4" />
-              <span>Импорт из Excel</span>
+              <span>Загрузить Excel</span>
             </button>
           </div>
           

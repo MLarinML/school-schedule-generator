@@ -4,7 +4,11 @@ import React, { useState, useMemo } from 'react'
 import { Plus, Users, Trash2, Edit3, Search, X, Copy, Check, Minus, Settings, MoreVertical, BookOpen, Clock, Zap } from 'lucide-react'
 import { useScheduleBuilder } from '../../context/ScheduleBuilderContext'
 
-const ClassesTab: React.FC = () => {
+interface ClassesTabProps {
+  onUpdateStatus?: (tabId: string, completed: boolean, hasErrors?: boolean) => void
+}
+
+const ClassesTab: React.FC<ClassesTabProps> = ({ onUpdateStatus }) => {
   const { data, updateClasses } = useScheduleBuilder()
   const [searchTerm, setSearchTerm] = useState('')
   const [newClassName, setNewClassName] = useState('')

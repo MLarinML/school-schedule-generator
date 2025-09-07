@@ -2330,12 +2330,6 @@ export const GenerationTab = ({ onUpdateStatus }: GenerationTabProps) => {
                               {conflict.message}
                             </div>
                             
-                            {/* Детали конфликта */}
-                            {conflict.details && (
-                              <div className="mt-2 text-xs text-gray-600">
-                                <strong>Детали:</strong> {conflict.details}
-                              </div>
-                            )}
                             
                             {/* Рекомендации */}
                             {conflict.recommendation && (

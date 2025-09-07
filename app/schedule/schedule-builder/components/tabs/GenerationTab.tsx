@@ -2333,35 +2333,6 @@ export const GenerationTab = ({ onUpdateStatus }: GenerationTabProps) => {
                             
                             
                             {/* Дополнительная информация */}
-                            {false && (
-                              <div className="mt-2 flex flex-wrap gap-2">
-                                {conflict.className && (
-                                  <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
-                                    Класс: {conflict.className}
-                                  </span>
-                                )}
-                                {conflict.teacherName && (
-                                  <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
-                                    Учитель: {conflict.teacherName}
-                                  </span>
-                                )}
-                                {conflict.subjectName && (
-                                  <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
-                                    Предмет: {conflict.subjectName}
-                                  </span>
-                                )}
-                                {conflict.day && (
-                                  <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
-                                    День: {conflict.day}
-                                  </span>
-                                )}
-                                {conflict.lesson && (
-                                  <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
-                                    Урок: {conflict.lesson}
-                                  </span>
-                                )}
-                              </div>
-                            )}
                             
                             {/* Общие советы по типу конфликта */}
                             {!conflict.recommendation && (

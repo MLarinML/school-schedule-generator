@@ -1124,10 +1124,10 @@ export const GenerationTab = ({ onUpdateStatus }: GenerationTabProps) => {
     // Генерируем расписание для каждого класса
     data.classes.forEach(classItem => {
       const classSubjects = Object.entries(classItem.subjects)
-        .filter(([_, load]) => load > 0)
-        .map(([subjectId, load]) => {
+        .filter(([_, subjectData]) => subjectData.load > 0)
+        .map(([subjectId, subjectData]) => {
           const subject = data.subjects.find(s => s.id === subjectId)
-          return subject ? { ...subject, load } : null
+          return subject ? { ...subject, load: subjectData.load } : null
         })
         .filter(Boolean)
       

@@ -269,7 +269,6 @@ export const GenerationTab = ({ onUpdateStatus }: GenerationTabProps) => {
             message: `Начальная школа: предмет ${slot.subjectId} в классе ${classItem.name} ведет ${teacher?.lastName} ${teacher?.firstName} вместо классного руководителя ${classTeacher?.lastName} ${classTeacher?.firstName}`,
             severity: 'error',
             details: 'В начальной школе предметы должны вестись классным руководителем',
-            className: classItem.name
           })
         }
       })
@@ -1174,7 +1173,7 @@ export const GenerationTab = ({ onUpdateStatus }: GenerationTabProps) => {
               // Размещаем урок
               const studentEntry: StudentSchedule = {
                 day,
-                className: classItem.name,
+,
                 lessonNumber: lesson,
                 subjectName,
                 classroomName: availableClassroom.name
@@ -1185,7 +1184,6 @@ export const GenerationTab = ({ onUpdateStatus }: GenerationTabProps) => {
                 day,
                 lessonNumber: lesson,
                 subjectName,
-                className: classItem.name
               }
               
               studentSchedule.push(studentEntry)

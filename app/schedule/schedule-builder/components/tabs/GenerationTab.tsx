@@ -1520,8 +1520,7 @@ export const GenerationTab = ({ onUpdateStatus }: GenerationTabProps) => {
         conflicts: [{
           type: 'load',
           message: 'Ошибка при генерации расписания',
-          severity: 'error',
-          details: error instanceof Error ? error.message : 'Неизвестная ошибка'
+          severity: 'error'
         }],
         studentSchedule: [],
         teacherSchedule: []

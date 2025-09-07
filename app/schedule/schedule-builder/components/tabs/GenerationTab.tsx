@@ -239,9 +239,7 @@ export const GenerationTab = ({ onUpdateStatus }: GenerationTabProps) => {
             constraint: 'loadFulfillment',
             message: `Нагрузка ${classItem.name} ${subject.name}: требуется ${load} слотов, размещено ${placedLessons}`,
             severity: 'error',
-            details: 'Количество уроков по предмету должно соответствовать заданной нагрузке',
-            className: classItem.name,
-            subjectName: subject.name
+            details: 'Количество уроков по предмету должно соответствовать заданной нагрузке'
           })
         }
       })

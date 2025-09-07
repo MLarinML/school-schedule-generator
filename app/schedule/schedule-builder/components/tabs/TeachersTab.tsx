@@ -17,8 +17,8 @@ const DAYS_OF_WEEK = [
 const LESSONS = [1, 2, 3, 4, 5, 6, 7, 8]
 
 export const TeachersTab = ({ onUpdateStatus }: TeachersTabProps) => {
-  const { data, addTeacher, removeTeacher, updateTeachers, updateTeacher } = useScheduleBuilder()
-  const [newTeacher, setNewTeacher] = useState({ firstName: '', lastName: '', middleName: '' })
+  const { data, addTeacher, removeTeacher, updateTeachers, updateTeacher, updateTeacherClassroom } = useScheduleBuilder()
+  const [newTeacher, setNewTeacher] = useState({ firstName: '', lastName: '', middleName: '', classroomId: '' })
   const [newTeacherSubjects, setNewTeacherSubjects] = useState<string[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null)
@@ -58,11 +58,12 @@ export const TeachersTab = ({ onUpdateStatus }: TeachersTabProps) => {
         lastName: newTeacher.lastName.trim(),
         middleName: newTeacher.middleName.trim() || undefined,
         subjects: newTeacherSubjects,
+        classroomId: newTeacher.classroomId || undefined,
         blockers: {}
       }
       
       addTeacher(teacher)
-      setNewTeacher({ firstName: '', lastName: '', middleName: '' })
+      setNewTeacher({ firstName: '', lastName: '', middleName: '', classroomId: '' })
       setNewTeacherSubjects([])
     }
   }
@@ -204,6 +205,13 @@ export const TeachersTab = ({ onUpdateStatus }: TeachersTabProps) => {
     return `${teacher.lastName} ${teacher.firstName}${teacher.middleName ? ` ${teacher.middleName}` : ''}`
   }
 
+  // Функция для получения названия кабинета по ID
+  const getClassroomName = (classroomId?: string) => {
+    if (!classroomId) return null
+    const classroom = data.classrooms.find(c => c.id === classroomId)
+    return classroom ? classroom.name : null
+  }
+
   const getTeacherSubjects = (teacher: Teacher) => {
     if (!teacher.subjects || !Array.isArray(teacher.subjects)) {
       return []
@@ -278,6 +286,7 @@ export const TeachersTab = ({ onUpdateStatus }: TeachersTabProps) => {
           lastName: lastName || 'Не указано',
           middleName: middleName || undefined,
           subjects: [],
+          classroomId: undefined,
           blockers: {}
         }
       })
@@ -424,6 +433,10 @@ export const TeachersTab = ({ onUpdateStatus }: TeachersTabProps) => {
     updateTeachers(data.teachers.map(t => t.id === teacherId ? updatedTeacher : t))
   }
 
+  const handleUpdateTeacherClassroom = (teacherId: string, classroomId: string) => {
+    updateTeacherClassroom(teacherId, classroomId || undefined)
+  }
+
   return (
     <div className="max-w-6xl mx-auto">
       <div className="mb-8">
@@ -453,7 +466,7 @@ export const TeachersTab = ({ onUpdateStatus }: TeachersTabProps) => {
           
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Фамилия *
@@ -491,6 +504,24 @@ export const TeachersTab = ({ onUpdateStatus }: TeachersTabProps) => {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               placeholder="Введите отчество"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Закрепленный кабинет
+            </label>
+            <select
+              value={newTeacher.classroomId}
+              onChange={(e) => setNewTeacher(prev => ({ ...prev, classroomId: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            >
+              <option value="">Выберите кабинет</option>
+              {data.classrooms.map(classroom => (
+                <option key={classroom.id} value={classroom.id}>
+                  {classroom.name}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
         
@@ -671,6 +702,12 @@ export const TeachersTab = ({ onUpdateStatus }: TeachersTabProps) => {
                         }
                       </p>
                       <p>
+                        {teacher.classroomId 
+                          ? `Кабинет: ${getClassroomName(teacher.classroomId)}`
+                          : 'Кабинет не закреплен'
+                        }
+                      </p>
+                      <p>
                         {Object.keys(teacher.blockers).length > 0 
                           ? `Настроены блокеры на ${Object.keys(teacher.blockers).length} дн.`
                           : 'Блокеры не настроены'
@@ -696,6 +733,19 @@ export const TeachersTab = ({ onUpdateStatus }: TeachersTabProps) => {
                     <Edit className="w-4 h-4" />
                     <span>Блокеры</span>
                   </button>
+                  
+                  <select
+                    value={teacher.classroomId || ''}
+                    onChange={(e) => handleUpdateTeacherClassroom(teacher.id, e.target.value)}
+                    className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  >
+                    <option value="">Кабинет</option>
+                    {data.classrooms.map(classroom => (
+                      <option key={classroom.id} value={classroom.id}>
+                        {classroom.name}
+                      </option>
+                    ))}
+                  </select>
                   
                   <button
                     onClick={() => handleRemoveTeacher(teacher.id)}

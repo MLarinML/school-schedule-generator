@@ -36,6 +36,11 @@ export const SubjectsTab = ({ onUpdateStatus }: SubjectsTabProps) => {
   
   // Состояние для показа инструкции импорта
   const [showImportInstructions, setShowImportInstructions] = useState(false)
+  
+  // Состояния для редактирования предметов
+  const [editingSubjectId, setEditingSubjectId] = useState<string | null>(null)
+  const [editingSubjectName, setEditingSubjectName] = useState('')
+  const [editingSubjectDifficulty, setEditingSubjectDifficulty] = useState('')
 
   useEffect(() => {
     const hasSubjects = data.subjects.length > 0
@@ -224,6 +229,86 @@ export const SubjectsTab = ({ onUpdateStatus }: SubjectsTabProps) => {
     setIsBulkActionModalOpen(false)
     setBulkAction(null)
     setBulkDifficulty('medium')
+  }
+
+  // Функции для редактирования предметов
+  const handleEditSubject = (subject: Subject) => {
+    setEditingSubjectId(subject.id)
+    setEditingSubjectName(subject.name)
+    setEditingSubjectDifficulty(subject.difficulty || 'medium')
+  }
+
+  const handleSaveEdit = () => {
+    if (!editingSubjectId || !editingSubjectName.trim()) return
+
+    const updatedSubjects = data.subjects.map(subject => 
+      subject.id === editingSubjectId 
+        ? { ...subject, name: editingSubjectName.trim(), difficulty: editingSubjectDifficulty as 'easy' | 'medium' | 'hard' }
+        : subject
+    )
+    
+    updateSubjects(updatedSubjects)
+    setEditingSubjectId(null)
+    setEditingSubjectName('')
+    setEditingSubjectDifficulty('')
+  }
+
+  const handleCancelEdit = () => {
+    setEditingSubjectId(null)
+    setEditingSubjectName('')
+    setEditingSubjectDifficulty('')
+  }
+
+  // Функция для разделения предмета на группы
+  const handleSplitSubject = (subject: Subject) => {
+    const baseName = subject.name.replace(/\s+\d+$/, '') // Убираем цифру в конце, если есть
+    
+    // Проверяем, есть ли уже группы для этого предмета
+    const existingGroups = data.subjects.filter(s => {
+      const match = s.name.match(new RegExp(`^${baseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s+(\\d+)$`))
+      return match !== null
+    })
+    
+    // Если уже есть группы, не создаем новые
+    if (existingGroups.length > 0) {
+      return
+    }
+    
+    // Создаем два новых предмета (группы 1 и 2)
+    const subject1: Subject = {
+      id: `subject_${Date.now()}_1`,
+      name: `${baseName} 1`,
+      difficulty: subject.difficulty || 'medium',
+      isGrouped: true
+    }
+    
+    const subject2: Subject = {
+      id: `subject_${Date.now()}_2`,
+      name: `${baseName} 2`,
+      difficulty: subject.difficulty || 'medium',
+      isGrouped: true
+    }
+    
+    // Удаляем оригинальный предмет и добавляем два новых
+    const updatedSubjects = data.subjects
+      .filter(s => s.id !== subject.id) // Удаляем оригинальный предмет
+      .concat([subject1, subject2]) // Добавляем два новых предмета
+    
+    updateSubjects(updatedSubjects)
+  }
+
+  // Функция для проверки, можно ли разделить предмет
+  const canSplitSubject = (subject: Subject) => {
+    const baseName = subject.name.replace(/\s+\d+$/, '') // Убираем цифру в конце, если есть
+    
+    // Проверяем, есть ли уже группы для этого предмета
+    const existingGroups = data.subjects.filter(s => {
+      const match = s.name.match(new RegExp(`^${baseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s+(\\d+)$`))
+      return match !== null
+    })
+    
+    // Можно разделить только если нет существующих групп
+    return existingGroups.length === 0
   }
 
   const getDifficultyInfo = (difficulty: string) => {
@@ -431,29 +516,100 @@ export const SubjectsTab = ({ onUpdateStatus }: SubjectsTabProps) => {
                   <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
                     <BookOpen className="w-5 h-5 text-primary-600" />
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">
-                      {subject.name}
-                    </h3>
-                    {subject.difficulty && (
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${difficultyInfo.color}`}>
-                        {difficultyInfo.label}
-                      </span>
+                  <div className="flex-1">
+                    {editingSubjectId === subject.id ? (
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          value={editingSubjectName}
+                          onChange={(e) => setEditingSubjectName(e.target.value)}
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                          onKeyDown={(e) => e.key === 'Enter' && handleSaveEdit()}
+                          autoFocus
+                        />
+                        <select
+                          value={editingSubjectDifficulty}
+                          onChange={(e) => setEditingSubjectDifficulty(e.target.value)}
+                          className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        >
+                          {DIFFICULTY_LEVELS.map(level => (
+                            <option key={level.value} value={level.value}>
+                              {level.label}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="flex space-x-1">
+                          <button
+                            onClick={handleSaveEdit}
+                            className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                          >
+                            Сохранить
+                          </button>
+                          <button
+                            onClick={handleCancelEdit}
+                            className="px-2 py-1 text-xs bg-gray-500 text-white rounded hover:bg-gray-600"
+                          >
+                            Отмена
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <h3 className="font-semibold text-gray-900">
+                          {subject.name}
+                        </h3>
+                        {subject.difficulty && (
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${difficultyInfo.color}`}>
+                            {difficultyInfo.label}
+                          </span>
+                        )}
+                        {subject.isGrouped && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 ml-2">
+                            Группа
+                          </span>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
                 
-                <button
-                  onClick={() => handleRemoveSubject(subject.id)}
-                  disabled={deletingSubjectId === subject.id}
-                  className={`p-2 rounded-lg transition-all duration-200 ${
-                    deletingSubjectId === subject.id
-                      ? 'text-red-400 bg-red-100 cursor-not-allowed'
-                      : 'text-red-600 hover:bg-red-50 hover:scale-110 active:scale-95'
-                  }`}
-                >
-                  <Trash2 className={`w-4 h-4 ${deletingSubjectId === subject.id ? 'animate-spin' : ''}`} />
-                </button>
+                <div className="flex items-center space-x-1">
+                  {editingSubjectId !== subject.id && (
+                    <>
+                      <button
+                        onClick={() => handleEditSubject(subject)}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95"
+                        title="Редактировать предмет"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleSplitSubject(subject)}
+                        disabled={!canSplitSubject(subject)}
+                        className={`p-2 rounded-lg transition-all duration-200 ${
+                          canSplitSubject(subject)
+                            ? 'text-purple-600 hover:bg-purple-50 hover:scale-110 active:scale-95 cursor-pointer'
+                            : 'text-gray-400 bg-gray-100 cursor-not-allowed opacity-50'
+                        }`}
+                        title={canSplitSubject(subject) ? "Разделить на группы" : "Уже разделен на группы"}
+                      >
+                        <Users className="w-4 h-4" />
+                      </button>
+                    </>
+                  )}
+                  <button
+                    onClick={() => handleRemoveSubject(subject.id)}
+                    disabled={deletingSubjectId === subject.id}
+                    className={`p-2 rounded-lg transition-all duration-200 ${
+                      deletingSubjectId === subject.id
+                        ? 'text-red-400 bg-red-100 cursor-not-allowed'
+                        : 'text-red-600 hover:bg-red-50 hover:scale-110 active:scale-95'
+                    }`}
+                    title="Удалить предмет"
+                  >
+                    <Trash2 className={`w-4 h-4 ${deletingSubjectId === subject.id ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
               </div>
               
               <div className="space-y-2">

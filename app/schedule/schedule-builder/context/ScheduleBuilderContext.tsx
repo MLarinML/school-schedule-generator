@@ -9,6 +9,7 @@ export interface Teacher {
   lastName: string
   middleName?: string
   subjects: string[] // массив ID предметов, которые преподает учитель
+  classroomId?: string // ID кабинета, закрепленного за учителем
   blockers: {
     [day: string]: {
       fullDay: boolean
@@ -24,6 +25,7 @@ export interface Classroom {
   capacity?: number
   subject?: string
   teacherId?: string // ID учителя, закрепленного за кабинетом
+  supportedSubjects?: string[] // массив ID предметов, которые поддерживает кабинет
 }
 
 export interface Subject {
@@ -36,8 +38,14 @@ export interface Subject {
 export interface Class {
   id: string
   name: string
+  classTeacher?: string // ID классного руководителя
+  isElementary?: boolean // флаг для 1-4 классов
   subjects: {
-    [subjectId: string]: number // количество уроков в неделю
+    [subjectId: string]: {
+      load: number // количество уроков в неделю
+      teacherId?: string // ID учителя (для 5+ классов)
+      groups?: string[] // группы предмета (например, ["1", "2"])
+    }
   }
 }
 
@@ -76,6 +84,7 @@ interface ScheduleBuilderContextType {
   generationResult: GenerationResult | null
   updateTeachers: (teachers: Teacher[]) => void
   updateTeacher: (teacher: Teacher) => void
+  updateTeacherClassroom: (teacherId: string, classroomId: string | undefined) => void
   updateClassrooms: (classrooms: Classroom[]) => void
   updateSubjects: (subjects: Subject[]) => void
   updateSubject: (subject: Subject) => void
@@ -110,15 +119,52 @@ export const ScheduleBuilderProvider = ({ children }: { children: ReactNode }) =
       const saved = localStorage.getItem(userKey)
       if (saved) {
         const parsedData = JSON.parse(saved)
-        // Миграция: добавляем поле subjects для существующих учителей
+        // Миграция: добавляем поле subjects и classroomId для существующих учителей
         const migratedTeachers = parsedData.teachers?.map((teacher: any) => ({
           ...teacher,
-          subjects: teacher.subjects || []
+          subjects: teacher.subjects || [],
+          classroomId: teacher.classroomId || undefined
         })) || []
+        
+        // Миграция: добавляем поле supportedSubjects для существующих кабинетов
+        const migratedClassrooms = parsedData.classrooms?.map((classroom: any) => ({
+          ...classroom,
+          supportedSubjects: classroom.supportedSubjects || []
+        })) || []
+        
+        // Миграция: обновляем структуру классов для поддержки новой схемы
+        const migratedClasses = parsedData.classes?.map((classItem: any) => {
+          const newSubjects: { [key: string]: { load: number; teacherId?: string; groups?: string[] } } = {}
+          
+          // Если subjects уже в новом формате, оставляем как есть
+          if (classItem.subjects && typeof Object.values(classItem.subjects)[0] === 'object') {
+            return classItem
+          }
+          
+          // Если subjects в старом формате (числа), конвертируем в новый
+          if (classItem.subjects) {
+            Object.entries(classItem.subjects).forEach(([subjectId, load]) => {
+              newSubjects[subjectId] = {
+                load: typeof load === 'number' ? load : 0,
+                teacherId: undefined,
+                groups: undefined
+              }
+            })
+          }
+          
+          return {
+            ...classItem,
+            subjects: newSubjects,
+            classTeacher: classItem.classTeacher || undefined,
+            isElementary: classItem.isElementary || false
+          }
+        }) || []
         
         return {
           ...parsedData,
-          teachers: migratedTeachers
+          teachers: migratedTeachers,
+          classrooms: migratedClassrooms,
+          classes: migratedClasses
         }
       }
       return initialData
@@ -184,6 +230,46 @@ export const ScheduleBuilderProvider = ({ children }: { children: ReactNode }) =
       teachers: prev.teachers.map(t => t.id === teacher.id ? teacher : t)
     }))
     setGenerationResult(null) // Сбрасываем результат генерации при изменении данных
+  }
+
+  const updateTeacherClassroom = (teacherId: string, classroomId: string | undefined) => {
+    setData(prev => {
+      // Обновляем учителя
+      const updatedTeachers = prev.teachers.map(t => 
+        t.id === teacherId ? { ...t, classroomId } : t
+      )
+      
+      // Обновляем кабинеты (убираем закрепление у других учителей, если кабинет уже закреплен)
+      let updatedClassrooms = prev.classrooms
+      if (classroomId) {
+        // Убираем закрепление у других учителей для этого кабинета
+        updatedTeachers.forEach(teacher => {
+          if (teacher.id !== teacherId && teacher.classroomId === classroomId) {
+            teacher.classroomId = undefined
+          }
+        })
+        
+        // Устанавливаем закрепление для выбранного учителя
+        updatedClassrooms = prev.classrooms.map(c => 
+          c.id === classroomId ? { ...c, teacherId } : c
+        )
+      } else {
+        // Убираем закрепление кабинета
+        const teacher = prev.teachers.find(t => t.id === teacherId)
+        if (teacher?.classroomId) {
+          updatedClassrooms = prev.classrooms.map(c => 
+            c.id === teacher.classroomId ? { ...c, teacherId: undefined } : c
+          )
+        }
+      }
+      
+      return {
+        ...prev,
+        teachers: updatedTeachers,
+        classrooms: updatedClassrooms
+      }
+    })
+    setGenerationResult(null)
   }
 
   const updateClassrooms = (classrooms: Classroom[]) => {
@@ -266,6 +352,7 @@ export const ScheduleBuilderProvider = ({ children }: { children: ReactNode }) =
       generationResult,
       updateTeachers,
       updateTeacher,
+      updateTeacherClassroom,
       updateClassrooms,
       updateSubjects,
       updateSubject,

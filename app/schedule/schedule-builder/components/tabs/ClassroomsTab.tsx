@@ -21,13 +21,14 @@ const CLASSROOM_TYPES = [
 ]
 
 export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
-  const { data, addClassroom, removeClassroom, updateClassrooms } = useScheduleBuilder()
+  const { data, addClassroom, removeClassroom, updateClassrooms, updateTeacherClassroom } = useScheduleBuilder()
   const [newClassroom, setNewClassroom] = useState({
     name: '',
     type: '',
     capacity: '',
     subject: '',
-    teacherId: ''
+    teacherId: '',
+    supportedSubjects: [] as string[]
   })
   const [searchTerm, setSearchTerm] = useState('')
   const [deletingClassroomId, setDeletingClassroomId] = useState<string | null>(null)
@@ -37,7 +38,8 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
     type: '',
     capacity: '',
     subject: '',
-    teacherId: ''
+    teacherId: '',
+    supportedSubjects: [] as string[]
   })
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const [importedClassrooms, setImportedClassrooms] = useState<string[]>([])
@@ -65,11 +67,12 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
         type: newClassroom.type || undefined,
         capacity: newClassroom.capacity ? parseInt(newClassroom.capacity) : undefined,
         subject: newClassroom.subject || undefined,
-        teacherId: newClassroom.teacherId || undefined
+        teacherId: newClassroom.teacherId || undefined,
+        supportedSubjects: newClassroom.supportedSubjects.length > 0 ? newClassroom.supportedSubjects : undefined
       }
       
       addClassroom(classroom)
-      setNewClassroom({ name: '', type: '', capacity: '', subject: '', teacherId: '' })
+      setNewClassroom({ name: '', type: '', capacity: '', subject: '', teacherId: '', supportedSubjects: [] })
     }
   }
 
@@ -90,7 +93,8 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
       type: classroom.type || '',
       capacity: classroom.capacity?.toString() || '',
       subject: classroom.subject || '',
-      teacherId: classroom.teacherId || ''
+      teacherId: classroom.teacherId || '',
+      supportedSubjects: classroom.supportedSubjects || []
     })
   }
 
@@ -102,7 +106,8 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
         type: editClassroom.type || undefined,
         capacity: editClassroom.capacity ? parseInt(editClassroom.capacity) : undefined,
         subject: editClassroom.subject || undefined,
-        teacherId: editClassroom.teacherId || undefined
+        teacherId: editClassroom.teacherId || undefined,
+        supportedSubjects: editClassroom.supportedSubjects.length > 0 ? editClassroom.supportedSubjects : undefined
       }
       
       updateClassrooms(data.classrooms.map(c => 
@@ -110,13 +115,13 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
       ))
       
       setEditingClassroomId(null)
-      setEditClassroom({ name: '', type: '', capacity: '', subject: '', teacherId: '' })
+      setEditClassroom({ name: '', type: '', capacity: '', subject: '', teacherId: '', supportedSubjects: [] })
     }
   }
 
   const handleCancelEdit = () => {
     setEditingClassroomId(null)
-    setEditClassroom({ name: '', type: '', capacity: '', subject: '', teacherId: '' })
+    setEditClassroom({ name: '', type: '', capacity: '', subject: '', teacherId: '', supportedSubjects: [] })
   }
 
   const filteredClassrooms = data.classrooms
@@ -147,6 +152,52 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
     const teacher = data.teachers.find(t => t.id === teacherId)
     if (!teacher) return null
     return `${teacher.lastName} ${teacher.firstName} ${teacher.middleName || ''}`.trim()
+  }
+
+  // Функция для получения названия предмета по ID
+  const getSubjectName = (subjectId: string) => {
+    const subject = data.subjects.find(s => s.id === subjectId)
+    return subject ? subject.name : subjectId
+  }
+
+  // Функция для переключения поддерживаемого предмета
+  const toggleSupportedSubject = (subjectId: string) => {
+    setNewClassroom(prev => ({
+      ...prev,
+      supportedSubjects: prev.supportedSubjects.includes(subjectId)
+        ? prev.supportedSubjects.filter(id => id !== subjectId)
+        : [...prev.supportedSubjects, subjectId]
+    }))
+  }
+
+  // Функция для переключения поддерживаемого предмета в режиме редактирования
+  const toggleEditSupportedSubject = (subjectId: string) => {
+    setEditClassroom(prev => ({
+      ...prev,
+      supportedSubjects: prev.supportedSubjects.includes(subjectId)
+        ? prev.supportedSubjects.filter(id => id !== subjectId)
+        : [...prev.supportedSubjects, subjectId]
+    }))
+  }
+
+  // Функция для обновления закрепленного учителя кабинета с двусторонней синхронизацией
+  const handleUpdateClassroomTeacher = (classroomId: string, teacherId: string) => {
+    // Обновляем кабинет
+    const updatedClassrooms = data.classrooms.map(c => 
+      c.id === classroomId ? { ...c, teacherId: teacherId || undefined } : c
+    )
+    updateClassrooms(updatedClassrooms)
+
+    // Обновляем учителей (убираем закрепление у других учителей для этого кабинета)
+    if (teacherId) {
+      updateTeacherClassroom(teacherId, classroomId)
+    } else {
+      // Убираем закрепление кабинета у всех учителей
+      const classroom = data.classrooms.find(c => c.id === classroomId)
+      if (classroom?.teacherId) {
+        updateTeacherClassroom(classroom.teacherId, undefined)
+      }
+    }
   }
 
   // Группируем аудитории по десяткам
@@ -225,9 +276,10 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
         return {
           id: `imported-${Date.now()}-${index}`,
           name: name,
-          type: 'Обычный',
+          type: 'Обычный кабинет',
           capacity: 30,
-          subject: ''
+          subject: '',
+          supportedSubjects: []
         }
       })
       
@@ -414,6 +466,35 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
             </select>
           </div>
         </div>
+
+        {/* Поддерживаемые предметы */}
+        {data.subjects.length > 0 && (
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Поддерживаемые предметы
+            </label>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+              {data.subjects.map(subject => (
+                <label key={subject.id} className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newClassroom.supportedSubjects.includes(subject.id)}
+                    onChange={() => toggleSupportedSubject(subject.id)}
+                    className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                  />
+                  <span className="text-sm text-gray-700">{subject.name}</span>
+                </label>
+              ))}
+            </div>
+            {newClassroom.supportedSubjects.length > 0 && (
+              <div className="mt-2">
+                <span className="text-xs text-gray-500">
+                  Выбрано: {newClassroom.supportedSubjects.length} предметов
+                </span>
+              </div>
+            )}
+          </div>
+        )}
         
         <div className="mt-4">
           <button
@@ -597,7 +678,10 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
                 
                 <select
                   value={editClassroom.teacherId}
-                  onChange={(e) => setEditClassroom(prev => ({ ...prev, teacherId: e.target.value }))}
+                  onChange={(e) => {
+                    setEditClassroom(prev => ({ ...prev, teacherId: e.target.value }))
+                    handleUpdateClassroomTeacher(editingClassroomId!, e.target.value)
+                  }}
                   className="w-full px-1 py-0.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
                 >
                   <option value="">Закрепить учителя</option>
@@ -607,6 +691,26 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
                     </option>
                   ))}
                 </select>
+                
+                {/* Поддерживаемые предметы в режиме редактирования */}
+                {data.subjects.length > 0 && (
+                  <div className="mt-1">
+                    <div className="text-xs text-gray-600 mb-1">Предметы:</div>
+                    <div className="max-h-20 overflow-y-auto">
+                      {data.subjects.map(subject => (
+                        <label key={subject.id} className="flex items-center space-x-1 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={editClassroom.supportedSubjects.includes(subject.id)}
+                            onChange={() => toggleEditSupportedSubject(subject.id)}
+                            className="w-3 h-3 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                          />
+                          <span className="text-xs text-gray-700">{subject.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-0.5">
@@ -632,6 +736,13 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
                   <div className="text-xs text-blue-600 truncate flex items-center">
                     <Users className="w-3 h-3 mr-1" />
                     {getTeacherName(classroom.teacherId)}
+                  </div>
+                )}
+                
+                {classroom.supportedSubjects && classroom.supportedSubjects.length > 0 && (
+                  <div className="text-xs text-green-600 truncate flex items-center">
+                    <BookOpen className="w-3 h-3 mr-1" />
+                    {classroom.supportedSubjects.length} предметов
                   </div>
                 )}
               </div>
@@ -702,7 +813,7 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
                         <div>
                           <span className="font-medium text-gray-900">{classroom}</span>
                           <div className="text-xs text-gray-500 mt-1">
-                            Тип: Обычный, Вместимость: 30
+                            Тип: Обычный кабинет, Вместимость: 30, Поддерживаемые предметы: Не выбраны
                           </div>
                         </div>
                         <div className="w-2 h-2 bg-green-400 rounded-full"></div>
@@ -887,7 +998,7 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
                   
                   <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
                     <p className="text-yellow-800 text-xs">
-                      💡 <strong>Важно:</strong> Для каждого кабинета будут установлены значения по умолчанию: тип "Обычный", вместимость 30, предмет "Общий"
+                      💡 <strong>Важно:</strong> Для каждого кабинета будут установлены значения по умолчанию: тип "Обычный кабинет", вместимость 30, поддерживаемые предметы не выбраны
                     </p>
                   </div>
                 </div>

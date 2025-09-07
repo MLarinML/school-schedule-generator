@@ -11,9 +11,52 @@ interface GenerationTabProps {
 }
 
 interface ScheduleConflict {
-  type: 'teacher' | 'classroom' | 'load'
+  type: 'teacher' | 'classroom' | 'load' | 'elementary' | 'difficult_subjects' | 'resource_conflict'
   message: string
   severity: 'error' | 'warning'
+  details?: string
+  recommendation?: string
+  className?: string
+  teacherName?: string
+  subjectName?: string
+  day?: string
+  lesson?: number
+}
+
+interface ScheduleSlot {
+  day: string
+  lesson: number
+  className: string
+  subjectId: string
+  teacherId: string
+  classroomId: string
+  group?: string
+}
+
+interface ConstraintViolation {
+  type: 'hard' | 'soft'
+  constraint: string
+  message: string
+  severity: 'error' | 'warning'
+  weight?: number
+  details?: string
+  recommendation?: string
+}
+
+interface ScheduleConstraints {
+  // Жесткие ограничения
+  resourceUniqueness: boolean
+  teacherAvailability: boolean
+  classroomAvailability: boolean
+  loadFulfillment: boolean
+  elementaryRules: boolean
+  difficultSubjectsSpacing: boolean
+  
+  // Мягкие ограничения
+  minimizeGaps: { enabled: boolean; weight: number }
+  avoidExtremeSlots: { enabled: boolean; weight: number }
+  distributeDifficultSubjects: { enabled: boolean; weight: number }
+  preferAssignedClassrooms: { enabled: boolean; weight: number }
 }
 
 interface SanPinViolation {
@@ -48,6 +91,23 @@ export const GenerationTab = ({ onUpdateStatus }: GenerationTabProps) => {
   const [isGenerating, setIsGenerating] = useState(false)
   const [activeTab, setActiveTab] = useState<ScheduleTab>('students')
   const [isConflictsExpanded, setIsConflictsExpanded] = useState(false)
+  const [constraints, setConstraints] = useState<ScheduleConstraints>({
+    // Жесткие ограничения (всегда включены)
+    resourceUniqueness: true,
+    teacherAvailability: true,
+    classroomAvailability: true,
+    loadFulfillment: true,
+    elementaryRules: true,
+    difficultSubjectsSpacing: true,
+    
+    // Мягкие ограничения
+    minimizeGaps: { enabled: true, weight: 10 },
+    avoidExtremeSlots: { enabled: true, weight: 5 },
+    distributeDifficultSubjects: { enabled: true, weight: 8 },
+    preferAssignedClassrooms: { enabled: true, weight: 3 }
+  })
+  const [violations, setViolations] = useState<ConstraintViolation[]>([])
+  const [generationProgress, setGenerationProgress] = useState(0)
   const [sanPinViolations, setSanPinViolations] = useState<SanPinViolation[]>([])
   const [isSanPinExpanded, setIsSanPinExpanded] = useState(false)
   const [isCheckingSanPin, setIsCheckingSanPin] = useState(false)
@@ -60,6 +120,298 @@ export const GenerationTab = ({ onUpdateStatus }: GenerationTabProps) => {
     
     onUpdateStatus('generation', canGenerate, false)
   }, [data])
+
+  // Функции проверки жестких ограничений
+  const checkResourceUniqueness = (schedule: ScheduleSlot[]): ConstraintViolation[] => {
+    const violations: ConstraintViolation[] = []
+    
+    // Проверка уникальности для классов
+    const classSlots: {[key: string]: {[day: string]: {[lesson: number]: boolean}}} = {}
+    const teacherSlots: {[key: string]: {[day: string]: {[lesson: number]: boolean}}} = {}
+    const classroomSlots: {[key: string]: {[day: string]: {[lesson: number]: boolean}}} = {}
+    
+    schedule.forEach(slot => {
+      const classKey = `${slot.className}`
+      const teacherKey = slot.teacherId
+      const classroomKey = slot.classroomId
+      
+      // Инициализация
+      if (!classSlots[classKey]) classSlots[classKey] = {}
+      if (!classSlots[classKey][slot.day]) classSlots[classKey][slot.day] = {}
+      if (!teacherSlots[teacherKey]) teacherSlots[teacherKey] = {}
+      if (!teacherSlots[teacherKey][slot.day]) teacherSlots[teacherKey][slot.day] = {}
+      if (!classroomSlots[classroomKey]) classroomSlots[classroomKey] = {}
+      if (!classroomSlots[classroomKey][slot.day]) classroomSlots[classroomKey][slot.day] = {}
+      
+      // Проверка конфликтов
+      if (classSlots[classKey][slot.day][slot.lesson]) {
+        violations.push({
+          type: 'hard',
+          constraint: 'resourceUniqueness',
+          message: `Класс ${slot.className} имеет два урока в ${slot.day} на ${slot.lesson} уроке`,
+          severity: 'error',
+          details: 'Класс не может иметь более одного урока в одном временном слоте'
+        })
+      }
+      
+      if (teacherSlots[teacherKey][slot.day][slot.lesson]) {
+        const teacher = data.teachers.find(t => t.id === teacherKey)
+        violations.push({
+          type: 'hard',
+          constraint: 'resourceUniqueness',
+          message: `Учитель ${teacher?.lastName} ${teacher?.firstName} ведет два урока в ${slot.day} на ${slot.lesson} уроке`,
+          severity: 'error',
+          details: 'Учитель не может вести более одного урока одновременно'
+        })
+      }
+      
+      if (classroomSlots[classroomKey][slot.day][slot.lesson]) {
+        const classroom = data.classrooms.find(c => c.id === classroomKey)
+        violations.push({
+          type: 'hard',
+          constraint: 'resourceUniqueness',
+          message: `Кабинет ${classroom?.name} занят двумя уроками в ${slot.day} на ${slot.lesson} уроке`,
+          severity: 'error',
+          details: 'Кабинет не может быть занят двумя уроками одновременно'
+        })
+      }
+      
+      // Отмечаем занятость
+      classSlots[classKey][slot.day][slot.lesson] = true
+      teacherSlots[teacherKey][slot.day][slot.lesson] = true
+      classroomSlots[classroomKey][slot.day][slot.lesson] = true
+    })
+    
+    return violations
+  }
+
+  const checkTeacherAvailability = (schedule: ScheduleSlot[]): ConstraintViolation[] => {
+    const violations: ConstraintViolation[] = []
+    
+    schedule.forEach(slot => {
+      const teacher = data.teachers.find(t => t.id === slot.teacherId)
+      if (!teacher) return
+      
+      const dayBlockers = teacher.blockers?.[slot.day]
+      if (dayBlockers) {
+        if (dayBlockers.fullDay) {
+          violations.push({
+            type: 'hard',
+            constraint: 'teacherAvailability',
+            message: `Учитель ${teacher.lastName} ${teacher.firstName} недоступен в ${slot.day} (блокер на весь день)`,
+            severity: 'error',
+            details: 'Учитель заблокирован на весь день'
+          })
+        } else if (dayBlockers.lessons.includes(slot.lesson)) {
+          violations.push({
+            type: 'hard',
+            constraint: 'teacherAvailability',
+            message: `Учитель ${teacher.lastName} ${teacher.firstName} недоступен в ${slot.day} на ${slot.lesson} уроке (блокер)`,
+            severity: 'error',
+            details: 'Учитель заблокирован на этот временной слот'
+          })
+        }
+      }
+    })
+    
+    return violations
+  }
+
+  const checkLoadFulfillment = (schedule: ScheduleSlot[]): ConstraintViolation[] => {
+    const violations: ConstraintViolation[] = []
+    
+    data.classes.forEach(classItem => {
+      Object.entries(classItem.subjects).forEach(([subjectId, subjectData]) => {
+        const load = typeof subjectData === 'object' ? subjectData.load : subjectData
+        if (load <= 0) return
+        
+        const subject = data.subjects.find(s => s.id === subjectId)
+        if (!subject) return
+        
+        // Подсчитываем размещенные уроки для этого предмета в классе
+        const placedLessons = schedule.filter(slot => 
+          slot.className === classItem.name && slot.subjectId === subjectId
+        ).length
+        
+        if (placedLessons !== load) {
+          violations.push({
+            type: 'hard',
+            constraint: 'loadFulfillment',
+            message: `Нагрузка ${classItem.name} ${subject.name}: требуется ${load} слотов, размещено ${placedLessons}`,
+            severity: 'error',
+            details: 'Количество уроков по предмету должно соответствовать заданной нагрузке',
+            className: classItem.name,
+            subjectName: subject.name
+          })
+        }
+      })
+    })
+    
+    return violations
+  }
+
+  const checkElementaryRules = (schedule: ScheduleSlot[]): ConstraintViolation[] => {
+    const violations: ConstraintViolation[] = []
+    
+    data.classes.forEach(classItem => {
+      if (!classItem.isElementary || !classItem.classTeacher) return
+      
+      // Проверяем, что все предметы начальных классов ведет классный руководитель
+      const elementaryLessons = schedule.filter(slot => 
+        slot.className === classItem.name
+      )
+      
+      elementaryLessons.forEach(slot => {
+        if (slot.teacherId !== classItem.classTeacher) {
+          const teacher = data.teachers.find(t => t.id === slot.teacherId)
+          const classTeacher = data.teachers.find(t => t.id === classItem.classTeacher)
+          violations.push({
+            type: 'hard',
+            constraint: 'elementaryRules',
+            message: `Начальная школа: предмет ${slot.subjectId} в классе ${classItem.name} ведет ${teacher?.lastName} ${teacher?.firstName} вместо классного руководителя ${classTeacher?.lastName} ${classTeacher?.firstName}`,
+            severity: 'error',
+            details: 'В начальной школе предметы должны вестись классным руководителем',
+            className: classItem.name
+          })
+        }
+      })
+    })
+    
+    return violations
+  }
+
+  // Функции проверки мягких ограничений
+  const checkMinimizeGaps = (schedule: ScheduleSlot[]): ConstraintViolation[] => {
+    const violations: ConstraintViolation[] = []
+    
+    // Группируем уроки по классам и дням
+    const classDayLessons: {[className: string]: {[day: string]: number[]}} = {}
+    
+    schedule.forEach(slot => {
+      if (!classDayLessons[slot.className]) classDayLessons[slot.className] = {}
+      if (!classDayLessons[slot.className][slot.day]) classDayLessons[slot.className][slot.day] = []
+      classDayLessons[slot.className][slot.day].push(slot.lesson)
+    })
+    
+    // Проверяем окна в расписании
+    Object.entries(classDayLessons).forEach(([className, dayLessons]) => {
+      Object.entries(dayLessons).forEach(([day, lessons]) => {
+        const sortedLessons = lessons.sort((a, b) => a - b)
+        
+        for (let i = 0; i < sortedLessons.length - 1; i++) {
+          const gap = sortedLessons[i + 1] - sortedLessons[i]
+          if (gap > 1) {
+            violations.push({
+              type: 'soft',
+              constraint: 'minimizeGaps',
+              message: `Класс ${className} имеет окно в ${day} между ${sortedLessons[i]} и ${sortedLessons[i + 1]} уроками`,
+              severity: 'warning',
+              weight: constraints.minimizeGaps.weight * gap,
+              details: 'Окна в расписании нежелательны',
+              recommendation: 'Попробуйте переставить уроки для устранения окна'
+            })
+          }
+        }
+      })
+    })
+    
+    return violations
+  }
+
+  const checkAvoidExtremeSlots = (schedule: ScheduleSlot[]): ConstraintViolation[] => {
+    const violations: ConstraintViolation[] = []
+    
+    schedule.forEach(slot => {
+      const subject = data.subjects.find(s => s.id === slot.subjectId)
+      if (!subject) return
+      
+      // Проверяем сложные предметы в крайних слотах
+      if (subject.difficulty === 'hard') {
+        if (slot.lesson === 1) {
+          violations.push({
+            type: 'soft',
+            constraint: 'avoidExtremeSlots',
+            message: `Сложный предмет ${subject.name} в классе ${slot.className} стоит на 1 уроке в ${slot.day}`,
+            severity: 'warning',
+            weight: constraints.avoidExtremeSlots.weight,
+            details: 'Сложные предметы нежелательны в первом уроке',
+            recommendation: 'Попробуйте переместить урок на более позднее время'
+          })
+        } else if (slot.lesson >= 7) {
+          violations.push({
+            type: 'soft',
+            constraint: 'avoidExtremeSlots',
+            message: `Сложный предмет ${subject.name} в классе ${slot.className} стоит на ${slot.lesson} уроке в ${slot.day}`,
+            severity: 'warning',
+            weight: constraints.avoidExtremeSlots.weight,
+            details: 'Сложные предметы нежелательны в поздних уроках',
+            recommendation: 'Попробуйте переместить урок на более раннее время'
+          })
+        }
+      }
+    })
+    
+    return violations
+  }
+
+  const checkDistributeDifficultSubjects = (schedule: ScheduleSlot[]): ConstraintViolation[] => {
+    const violations: ConstraintViolation[] = []
+    
+    // Группируем сложные предметы по классам и дням
+    const classDayDifficult: {[className: string]: {[day: string]: number}} = {}
+    
+    schedule.forEach(slot => {
+      const subject = data.subjects.find(s => s.id === slot.subjectId)
+      if (subject?.difficulty === 'hard') {
+        if (!classDayDifficult[slot.className]) classDayDifficult[slot.className] = {}
+        classDayDifficult[slot.className][slot.day] = (classDayDifficult[slot.className][slot.day] || 0) + 1
+      }
+    })
+    
+    // Проверяем неравномерное распределение
+    Object.entries(classDayDifficult).forEach(([className, dayCounts]) => {
+      const counts = Object.values(dayCounts)
+      const maxCount = Math.max(...counts)
+      const minCount = Math.min(...counts)
+      
+      if (maxCount - minCount > 1) {
+        violations.push({
+          type: 'soft',
+          constraint: 'distributeDifficultSubjects',
+          message: `Класс ${className} имеет неравномерное распределение сложных предметов по дням (от ${minCount} до ${maxCount} в день)`,
+          severity: 'warning',
+          weight: constraints.distributeDifficultSubjects.weight * (maxCount - minCount),
+          details: 'Сложные предметы должны быть равномерно распределены по неделе',
+          recommendation: 'Попробуйте перераспределить сложные предметы между днями'
+        })
+      }
+    })
+    
+    return violations
+  }
+
+  const checkPreferAssignedClassrooms = (schedule: ScheduleSlot[]): ConstraintViolation[] => {
+    const violations: ConstraintViolation[] = []
+    
+    schedule.forEach(slot => {
+      const teacher = data.teachers.find(t => t.id === slot.teacherId)
+      const classroom = data.classrooms.find(c => c.id === slot.classroomId)
+      
+      if (teacher?.classroomId && teacher.classroomId !== slot.classroomId) {
+        violations.push({
+          type: 'soft',
+          constraint: 'preferAssignedClassrooms',
+          message: `Учитель ${teacher.lastName} ${teacher.firstName} ведет урок не в своем закрепленном кабинете`,
+          severity: 'warning',
+          weight: constraints.preferAssignedClassrooms.weight,
+          details: 'Учитель предпочитает вести уроки в закрепленном кабинете',
+          recommendation: 'Попробуйте назначить урок в закрепленный кабинет учителя'
+        })
+      }
+    })
+    
+    return violations
+  }
 
   const validateData = (): ScheduleConflict[] => {
     const conflicts: ScheduleConflict[] = []
@@ -114,6 +466,255 @@ export const GenerationTab = ({ onUpdateStatus }: GenerationTabProps) => {
     }
 
     return conflicts
+  }
+
+  // Новая функция генерации расписания с проверкой ограничений
+  const generateAdvancedSchedule = (): { studentSchedule: StudentSchedule[], teacherSchedule: TeacherSchedule[], violations: ConstraintViolation[] } => {
+    const violations: ConstraintViolation[] = []
+    const studentSchedule: StudentSchedule[] = []
+    const teacherSchedule: TeacherSchedule[] = []
+    const schedule: ScheduleSlot[] = []
+    
+    const days = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота']
+    const maxLessonsPerDay = 8
+    
+    // Создаем матрицы занятости
+    const classroomOccupancy: {[key: string]: {[day: string]: {[lesson: number]: boolean}}} = {}
+    const teacherOccupancy: {[key: string]: {[day: string]: {[lesson: number]: boolean}}} = {}
+    const classOccupancy: {[key: string]: {[day: string]: {[lesson: number]: boolean}}} = {}
+    
+    // Инициализация матриц
+    data.classrooms.forEach(classroom => {
+      classroomOccupancy[classroom.id] = {}
+      days.forEach(day => {
+        classroomOccupancy[classroom.id][day] = {}
+        for (let lesson = 1; lesson <= maxLessonsPerDay; lesson++) {
+          classroomOccupancy[classroom.id][day][lesson] = false
+        }
+      })
+    })
+    
+    data.teachers.forEach(teacher => {
+      teacherOccupancy[teacher.id] = {}
+      days.forEach(day => {
+        teacherOccupancy[teacher.id][day] = {}
+        for (let lesson = 1; lesson <= maxLessonsPerDay; lesson++) {
+          teacherOccupancy[teacher.id][day][lesson] = false
+        }
+      })
+    })
+    
+    data.classes.forEach(classItem => {
+      classOccupancy[classItem.name] = {}
+      days.forEach(day => {
+        classOccupancy[classItem.name][day] = {}
+        for (let lesson = 1; lesson <= maxLessonsPerDay; lesson++) {
+          classOccupancy[classItem.name][day][lesson] = false
+        }
+      })
+    })
+    
+    // Применяем блокеры учителей
+    data.teachers.forEach(teacher => {
+      Object.entries(teacher.blockers || {}).forEach(([day, blocker]) => {
+        if (blocker.fullDay) {
+          for (let lesson = 1; lesson <= maxLessonsPerDay; lesson++) {
+            teacherOccupancy[teacher.id][day][lesson] = true
+          }
+        } else {
+          blocker.lessons.forEach(lesson => {
+            teacherOccupancy[teacher.id][day][lesson] = true
+          })
+        }
+      })
+    })
+    
+    // Собираем все уроки для размещения
+    const lessonsToPlace: Array<{
+      classItem: any
+      subjectId: string
+      subject: any
+      load: number
+      teacherId: string
+      groups?: string[]
+    }> = []
+    
+    data.classes.forEach(classItem => {
+      Object.entries(classItem.subjects).forEach(([subjectId, subjectData]) => {
+        const load = typeof subjectData === 'object' ? subjectData.load : subjectData
+        if (load <= 0) return
+        
+        const subject = data.subjects.find(s => s.id === subjectId)
+        if (!subject) return
+        
+        let teacherId: string
+        
+        // Определяем учителя
+        if (classItem.isElementary && classItem.classTeacher) {
+          // Для начальных классов используем классного руководителя
+          teacherId = classItem.classTeacher
+        } else {
+          // Для старших классов используем назначенного учителя или первого доступного
+          const subjectDataObj = typeof subjectData === 'object' ? subjectData : { load, teacherId: undefined, groups: undefined }
+          teacherId = subjectDataObj.teacherId || data.teachers.find(t => t.subjects?.includes(subjectId))?.id || ''
+        }
+        
+        if (!teacherId) {
+          violations.push({
+            type: 'hard',
+            constraint: 'teacherAvailability',
+            message: `Не найден учитель для предмета ${subject.name} в классе ${classItem.name}`,
+            severity: 'error',
+            details: 'Для каждого предмета должен быть назначен учитель'
+          })
+          return
+        }
+        
+        // Добавляем уроки для размещения
+        for (let i = 0; i < load; i++) {
+          lessonsToPlace.push({
+            classItem,
+            subjectId,
+            subject,
+            load: 1,
+            teacherId,
+            groups: typeof subjectData === 'object' ? subjectData.groups : undefined
+          })
+        }
+      })
+    })
+    
+    // Алгоритм размещения уроков
+    lessonsToPlace.forEach((lesson, index) => {
+      setGenerationProgress(Math.round((index / lessonsToPlace.length) * 100))
+      
+      let placed = false
+      
+      // Пробуем разместить урок
+      for (let dayIndex = 0; dayIndex < days.length && !placed; dayIndex++) {
+        const day = days[dayIndex]
+        
+        for (let lessonNum = 1; lessonNum <= maxLessonsPerDay && !placed; lessonNum++) {
+          // Проверяем доступность ресурсов
+          if (classOccupancy[lesson.classItem.name][day][lessonNum]) continue
+          if (teacherOccupancy[lesson.teacherId][day][lessonNum]) continue
+          
+          // Находим подходящий кабинет
+          const availableClassroom = data.classrooms.find(classroom => {
+            if (classroomOccupancy[classroom.id][day][lessonNum]) return false
+            
+            // Проверяем совместимость предмета и кабинета
+            if (classroom.supportedSubjects && classroom.supportedSubjects.length > 0) {
+              return classroom.supportedSubjects.includes(lesson.subjectId)
+            }
+            
+            return true
+          })
+          
+          if (!availableClassroom) continue
+          
+          // Проверяем правила для сложных предметов
+          if (lesson.subject.difficulty === 'hard' && constraints.difficultSubjectsSpacing) {
+            // Проверяем, что сложные предметы не стоят подряд
+            const prevLesson = schedule.find(s => 
+              s.day === day && 
+              s.className === lesson.classItem.name && 
+              s.lesson === lessonNum - 1
+            )
+            if (prevLesson) {
+              const prevSubject = data.subjects.find(s => s.id === prevLesson.subjectId)
+              if (prevSubject?.difficulty === 'hard') continue
+            }
+          }
+          
+          // Размещаем урок
+          const slot: ScheduleSlot = {
+            day,
+            lesson: lessonNum,
+            className: lesson.classItem.name,
+            subjectId: lesson.subjectId,
+            teacherId: lesson.teacherId,
+            classroomId: availableClassroom.id,
+            group: lesson.groups?.[index % (lesson.groups?.length || 1)]
+          }
+          
+          schedule.push(slot)
+          
+          // Отмечаем занятость
+          classOccupancy[lesson.classItem.name][day][lessonNum] = true
+          teacherOccupancy[lesson.teacherId][day][lessonNum] = true
+          classroomOccupancy[availableClassroom.id][day][lessonNum] = true
+          
+          placed = true
+        }
+      }
+      
+      if (!placed) {
+        violations.push({
+          type: 'hard',
+          constraint: 'loadFulfillment',
+          message: `Не удалось разместить урок ${lesson.subject.name} для класса ${lesson.classItem.name}`,
+          severity: 'error',
+          details: 'Недостаточно свободных слотов для размещения всех уроков',
+          recommendation: 'Проверьте доступность учителей и кабинетов, возможно нужно добавить больше ресурсов'
+        })
+      }
+    })
+    
+    // Проверяем все ограничения
+    if (constraints.resourceUniqueness) {
+      violations.push(...checkResourceUniqueness(schedule))
+    }
+    if (constraints.teacherAvailability) {
+      violations.push(...checkTeacherAvailability(schedule))
+    }
+    if (constraints.loadFulfillment) {
+      violations.push(...checkLoadFulfillment(schedule))
+    }
+    if (constraints.elementaryRules) {
+      violations.push(...checkElementaryRules(schedule))
+    }
+    
+    // Проверяем мягкие ограничения
+    if (constraints.minimizeGaps.enabled) {
+      violations.push(...checkMinimizeGaps(schedule))
+    }
+    if (constraints.avoidExtremeSlots.enabled) {
+      violations.push(...checkAvoidExtremeSlots(schedule))
+    }
+    if (constraints.distributeDifficultSubjects.enabled) {
+      violations.push(...checkDistributeDifficultSubjects(schedule))
+    }
+    if (constraints.preferAssignedClassrooms.enabled) {
+      violations.push(...checkPreferAssignedClassrooms(schedule))
+    }
+    
+    // Конвертируем в формат для отображения
+    schedule.forEach(slot => {
+      const subject = data.subjects.find(s => s.id === slot.subjectId)
+      const teacher = data.teachers.find(t => t.id === slot.teacherId)
+      const classroom = data.classrooms.find(c => c.id === slot.classroomId)
+      
+      if (subject && teacher && classroom) {
+        studentSchedule.push({
+          day: slot.day,
+          className: slot.className,
+          lessonNumber: slot.lesson,
+          subjectName: subject.name,
+          classroomName: classroom.name
+        })
+        
+        teacherSchedule.push({
+          teacherName: `${teacher.lastName} ${teacher.firstName}`,
+          day: slot.day,
+          lessonNumber: slot.lesson,
+          subjectName: subject.name,
+          className: slot.className
+        })
+      }
+    })
+    
+    return { studentSchedule, teacherSchedule, violations }
   }
 
   const generateSchedule = (): { studentSchedule: StudentSchedule[], teacherSchedule: TeacherSchedule[], conflicts: ScheduleConflict[] } => {
@@ -502,6 +1103,8 @@ export const GenerationTab = ({ onUpdateStatus }: GenerationTabProps) => {
 
   const handleGenerate = async () => {
     setIsGenerating(true)
+    setGenerationProgress(0)
+    setViolations([])
     
     // Сбрасываем результаты проверки СанПиН
     setSanPinViolations([])
@@ -521,23 +1124,39 @@ export const GenerationTab = ({ onUpdateStatus }: GenerationTabProps) => {
       return
     }
     
-    // Генерация расписания
+    // Генерация расписания с новой системой ограничений
     try {
-      const { studentSchedule, teacherSchedule, conflicts } = generateSchedule()
+      const { studentSchedule, teacherSchedule, violations } = generateAdvancedSchedule()
+      
+      // Конвертируем violations в conflicts для совместимости
+      const conflicts: ScheduleConflict[] = violations.map(violation => ({
+        type: violation.constraint as any,
+        message: violation.message,
+        severity: violation.severity,
+        details: violation.details,
+        recommendation: violation.recommendation
+      }))
+      
+      setViolations(violations)
+      
+      // Проверяем, есть ли критические ошибки
+      const hasCriticalErrors = violations.some(v => v.type === 'hard' && v.severity === 'error')
       
       setGenerationResult({
-        success: true,
+        success: !hasCriticalErrors,
         conflicts,
         studentSchedule,
         teacherSchedule
       })
     } catch (error) {
+      console.error('Ошибка при генерации расписания:', error)
       setGenerationResult({
         success: false,
         conflicts: [{
           type: 'load',
           message: 'Ошибка при генерации расписания',
-          severity: 'error'
+          severity: 'error',
+          details: error instanceof Error ? error.message : 'Неизвестная ошибка'
         }],
         studentSchedule: [],
         teacherSchedule: []
@@ -545,6 +1164,7 @@ export const GenerationTab = ({ onUpdateStatus }: GenerationTabProps) => {
     }
     
     setIsGenerating(false)
+    setGenerationProgress(0)
   }
 
   const exportToExcel = () => {
@@ -1040,6 +1660,172 @@ export const GenerationTab = ({ onUpdateStatus }: GenerationTabProps) => {
         </p>
       </div>
 
+      {/* Настройки ограничений */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Настройки ограничений
+        </h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Жесткие ограничения */}
+          <div>
+            <h4 className="text-md font-medium text-gray-800 mb-3">Жесткие ограничения (обязательные)</h4>
+            <div className="space-y-3">
+              <label className="flex items-center space-x-3">
+                <input
+                  type="checkbox"
+                  checked={constraints.resourceUniqueness}
+                  disabled
+                  className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                />
+                <span className="text-sm text-gray-700">Ресурсная уникальность</span>
+              </label>
+              <label className="flex items-center space-x-3">
+                <input
+                  type="checkbox"
+                  checked={constraints.teacherAvailability}
+                  disabled
+                  className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                />
+                <span className="text-sm text-gray-700">Доступность учителей</span>
+              </label>
+              <label className="flex items-center space-x-3">
+                <input
+                  type="checkbox"
+                  checked={constraints.loadFulfillment}
+                  disabled
+                  className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                />
+                <span className="text-sm text-gray-700">Выполнение нагрузок</span>
+              </label>
+              <label className="flex items-center space-x-3">
+                <input
+                  type="checkbox"
+                  checked={constraints.elementaryRules}
+                  disabled
+                  className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                />
+                <span className="text-sm text-gray-700">Правила начальной школы</span>
+              </label>
+            </div>
+          </div>
+          
+          {/* Мягкие ограничения */}
+          <div>
+            <h4 className="text-md font-medium text-gray-800 mb-3">Мягкие ограничения (желательные)</h4>
+            <div className="space-y-3">
+              <label className="flex items-center justify-between">
+                <span className="text-sm text-gray-700">Минимизировать окна</span>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={constraints.minimizeGaps.enabled}
+                    onChange={(e) => setConstraints(prev => ({
+                      ...prev,
+                      minimizeGaps: { ...prev.minimizeGaps, enabled: e.target.checked }
+                    }))}
+                    className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                  />
+                  <input
+                    type="range"
+                    min="1"
+                    max="20"
+                    value={constraints.minimizeGaps.weight}
+                    onChange={(e) => setConstraints(prev => ({
+                      ...prev,
+                      minimizeGaps: { ...prev.minimizeGaps, weight: parseInt(e.target.value) }
+                    }))}
+                    className="w-16"
+                  />
+                  <span className="text-xs text-gray-500 w-6">{constraints.minimizeGaps.weight}</span>
+                </div>
+              </label>
+              
+              <label className="flex items-center justify-between">
+                <span className="text-sm text-gray-700">Избегать крайних слотов</span>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={constraints.avoidExtremeSlots.enabled}
+                    onChange={(e) => setConstraints(prev => ({
+                      ...prev,
+                      avoidExtremeSlots: { ...prev.avoidExtremeSlots, enabled: e.target.checked }
+                    }))}
+                    className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                  />
+                  <input
+                    type="range"
+                    min="1"
+                    max="20"
+                    value={constraints.avoidExtremeSlots.weight}
+                    onChange={(e) => setConstraints(prev => ({
+                      ...prev,
+                      avoidExtremeSlots: { ...prev.avoidExtremeSlots, weight: parseInt(e.target.value) }
+                    }))}
+                    className="w-16"
+                  />
+                  <span className="text-xs text-gray-500 w-6">{constraints.avoidExtremeSlots.weight}</span>
+                </div>
+              </label>
+              
+              <label className="flex items-center justify-between">
+                <span className="text-sm text-gray-700">Равномерно распределять сложные предметы</span>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={constraints.distributeDifficultSubjects.enabled}
+                    onChange={(e) => setConstraints(prev => ({
+                      ...prev,
+                      distributeDifficultSubjects: { ...prev.distributeDifficultSubjects, enabled: e.target.checked }
+                    }))}
+                    className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                  />
+                  <input
+                    type="range"
+                    min="1"
+                    max="20"
+                    value={constraints.distributeDifficultSubjects.weight}
+                    onChange={(e) => setConstraints(prev => ({
+                      ...prev,
+                      distributeDifficultSubjects: { ...prev.distributeDifficultSubjects, weight: parseInt(e.target.value) }
+                    }))}
+                    className="w-16"
+                  />
+                  <span className="text-xs text-gray-500 w-6">{constraints.distributeDifficultSubjects.weight}</span>
+                </div>
+              </label>
+              
+              <label className="flex items-center justify-between">
+                <span className="text-sm text-gray-700">Предпочитать закрепленные кабинеты</span>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={constraints.preferAssignedClassrooms.enabled}
+                    onChange={(e) => setConstraints(prev => ({
+                      ...prev,
+                      preferAssignedClassrooms: { ...prev.preferAssignedClassrooms, enabled: e.target.checked }
+                    }))}
+                    className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                  />
+                  <input
+                    type="range"
+                    min="1"
+                    max="20"
+                    value={constraints.preferAssignedClassrooms.weight}
+                    onChange={(e) => setConstraints(prev => ({
+                      ...prev,
+                      preferAssignedClassrooms: { ...prev.preferAssignedClassrooms, weight: parseInt(e.target.value) }
+                    }))}
+                    className="w-16"
+                  />
+                  <span className="text-xs text-gray-500 w-6">{constraints.preferAssignedClassrooms.weight}</span>
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Кнопка генерации */}
       <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
         <div className="flex items-center justify-between">
@@ -1050,6 +1836,17 @@ export const GenerationTab = ({ onUpdateStatus }: GenerationTabProps) => {
             <p className="text-gray-600">
               Нажмите кнопку для создания расписания с учетом всех настроек
             </p>
+            {isGenerating && (
+              <div className="mt-2">
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-primary-600 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${generationProgress}%` }}
+                  ></div>
+                </div>
+                <p className="text-sm text-gray-600 mt-1">Прогресс: {generationProgress}%</p>
+              </div>
+            )}
           </div>
           
           <div className="flex items-center space-x-3">
@@ -1168,9 +1965,70 @@ export const GenerationTab = ({ onUpdateStatus }: GenerationTabProps) => {
                             <div className="text-sm font-medium whitespace-pre-line">
                               {conflict.message}
                             </div>
-                            {conflict.type === 'load' && (
+                            
+                            {/* Детали конфликта */}
+                            {conflict.details && (
+                              <div className="mt-2 text-xs text-gray-600">
+                                <strong>Детали:</strong> {conflict.details}
+                              </div>
+                            )}
+                            
+                            {/* Рекомендации */}
+                            {conflict.recommendation && (
+                              <div className="mt-2 p-2 bg-blue-50 rounded text-xs text-blue-700 border border-blue-200">
+                                💡 <strong>Рекомендация:</strong> {conflict.recommendation}
+                              </div>
+                            )}
+                            
+                            {/* Дополнительная информация */}
+                            {(conflict.className || conflict.teacherName || conflict.subjectName || conflict.day) && (
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                {conflict.className && (
+                                  <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
+                                    Класс: {conflict.className}
+                                  </span>
+                                )}
+                                {conflict.teacherName && (
+                                  <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
+                                    Учитель: {conflict.teacherName}
+                                  </span>
+                                )}
+                                {conflict.subjectName && (
+                                  <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
+                                    Предмет: {conflict.subjectName}
+                                  </span>
+                                )}
+                                {conflict.day && (
+                                  <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
+                                    День: {conflict.day}
+                                  </span>
+                                )}
+                                {conflict.lesson && (
+                                  <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
+                                    Урок: {conflict.lesson}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            
+                            {/* Общие советы по типу конфликта */}
+                            {!conflict.recommendation && (
                               <div className="mt-2 p-2 bg-gray-50 rounded text-xs text-gray-600">
-                                💡 <strong>Совет:</strong> Попробуйте уменьшить нагрузки по предметам, добавить больше кабинетов или изменить блокеры учителей
+                                {conflict.type === 'load' && (
+                                  <>💡 <strong>Совет:</strong> Попробуйте уменьшить нагрузки по предметам, добавить больше кабинетов или изменить блокеры учителей</>
+                                )}
+                                {conflict.type === 'teacher' && (
+                                  <>💡 <strong>Совет:</strong> Проверьте блокеры учителей или добавьте больше учителей для предметов</>
+                                )}
+                                {conflict.type === 'classroom' && (
+                                  <>💡 <strong>Совет:</strong> Добавьте больше кабинетов или проверьте совместимость предметов с кабинетами</>
+                                )}
+                                {conflict.type === 'elementary' && (
+                                  <>💡 <strong>Совет:</strong> Убедитесь, что для начальных классов назначен классный руководитель</>
+                                )}
+                                {conflict.type === 'resource_conflict' && (
+                                  <>💡 <strong>Совет:</strong> Проверьте, что ресурсы (учителя, кабинеты, классы) не перегружены</>
+                                )}
                               </div>
                             )}
                           </div>

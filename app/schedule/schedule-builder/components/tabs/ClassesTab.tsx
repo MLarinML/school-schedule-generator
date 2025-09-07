@@ -20,6 +20,11 @@ const ClassesTab: React.FC = () => {
   const [templateCreated, setTemplateCreated] = useState(false)
   const [createdClassesCount, setCreatedClassesCount] = useState(0)
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false)
+  const [newClassTeacher, setNewClassTeacher] = useState('')
+  const [newClassIsElementary, setNewClassIsElementary] = useState(false)
+  const [editingClassTeacher, setEditingClassTeacher] = useState('')
+  const [editingClassIsElementary, setEditingClassIsElementary] = useState(false)
+  const [editingSubjectGroups, setEditingSubjectGroups] = useState<{[key: string]: string[]}>({})
 
   const getFilteredClasses = () => {
     return data.classes.filter(classItem => 
@@ -29,8 +34,64 @@ const ClassesTab: React.FC = () => {
 
   const getClassStats = (classItem: any) => {
     const subjectsCount = Object.keys(classItem.subjects).length
-    const totalLoad = Object.values(classItem.subjects).reduce((sum: number, load: any) => sum + load, 0)
+    const totalLoad = Object.values(classItem.subjects).reduce((sum: number, subjectData: any) => {
+      const load = typeof subjectData === 'object' ? subjectData.load : subjectData
+      return sum + (load || 0)
+    }, 0)
     return { subjectsCount, totalLoad }
+  }
+
+  const getTeacherName = (teacherId: string) => {
+    const teacher = data.teachers.find(t => t.id === teacherId)
+    if (!teacher) return 'Неизвестный учитель'
+    return `${teacher.lastName} ${teacher.firstName} ${teacher.middleName || ''}`.trim()
+  }
+
+  const getSubjectTeachers = (subjectId: string) => {
+    return data.teachers.filter(teacher => teacher.subjects?.includes(subjectId))
+  }
+
+  const isElementaryClass = (className: string) => {
+    const grade = parseInt(className.match(/^\d+/)?.[0] || '0')
+    return grade >= 1 && grade <= 4
+  }
+
+  const handleAddGroupToSubject = (classId: string, subjectId: string, groupName: string) => {
+    const updatedClasses = data.classes.map(c => {
+      if (c.id === classId) {
+        const newSubjects = { ...c.subjects }
+        if (newSubjects[subjectId]) {
+          const currentGroups = newSubjects[subjectId].groups || []
+          if (!currentGroups.includes(groupName)) {
+            newSubjects[subjectId] = {
+              ...newSubjects[subjectId],
+              groups: [...currentGroups, groupName]
+            }
+          }
+        }
+        return { ...c, subjects: newSubjects }
+      }
+      return c
+    })
+    updateClasses(updatedClasses)
+  }
+
+  const handleRemoveGroupFromSubject = (classId: string, subjectId: string, groupName: string) => {
+    const updatedClasses = data.classes.map(c => {
+      if (c.id === classId) {
+        const newSubjects = { ...c.subjects }
+        if (newSubjects[subjectId]) {
+          const currentGroups = newSubjects[subjectId].groups || []
+          newSubjects[subjectId] = {
+            ...newSubjects[subjectId],
+            groups: currentGroups.filter(g => g !== groupName)
+          }
+        }
+        return { ...c, subjects: newSubjects }
+      }
+      return c
+    })
+    updateClasses(updatedClasses)
   }
 
   const handleSelectClass = (classId: string) => {
@@ -91,7 +152,22 @@ const ClassesTab: React.FC = () => {
 
     const newSubjects = { ...classItem.subjects }
     subjects.forEach((subjectId, index) => {
-      newSubjects[subjectId] = loadPerSubject + (index < remainder ? 1 : 0)
+      const currentSubjectData = classItem.subjects[subjectId]
+      const isNewFormat = typeof currentSubjectData === 'object'
+      
+      if (isNewFormat) {
+        newSubjects[subjectId] = {
+          ...currentSubjectData,
+          load: loadPerSubject + (index < remainder ? 1 : 0)
+        }
+      } else {
+        // Миграция старого формата
+        newSubjects[subjectId] = {
+          load: loadPerSubject + (index < remainder ? 1 : 0),
+          teacherId: undefined,
+          groups: undefined
+        }
+      }
     })
 
     const updatedClasses = data.classes.map(c => 
@@ -101,7 +177,7 @@ const ClassesTab: React.FC = () => {
   }
 
   const handleCreateClassTemplate = () => {
-    const templateClasses: Array<{ id: string; name: string; subjects: { [subjectId: string]: number } }> = []
+    const templateClasses: Array<{ id: string; name: string; subjects: { [subjectId: string]: { load: number; teacherId?: string; groups?: string[] } }; classTeacher?: string; isElementary?: boolean }> = []
     
     // Классы 1-9 с буквами А, Б, В
     for (let grade = 1; grade <= 9; grade++) {
@@ -112,7 +188,8 @@ const ClassesTab: React.FC = () => {
           templateClasses.push({
             id: `class_${grade}_${letter}_${Date.now()}`,
             name: className,
-            subjects: {} as { [subjectId: string]: number }
+            subjects: {},
+            isElementary: grade >= 1 && grade <= 4
           })
         }
       })
@@ -127,7 +204,8 @@ const ClassesTab: React.FC = () => {
           templateClasses.push({
             id: `class_${grade}_${letter}_${Date.now()}`,
             name: className,
-            subjects: {} as { [subjectId: string]: number }
+            subjects: {},
+            isElementary: false
           })
         }
       })
@@ -154,11 +232,15 @@ const ClassesTab: React.FC = () => {
     const newClass = {
       id: `class_${Date.now()}`,
       name: newClassName.trim(),
-      subjects: {} as { [subjectId: string]: number }
+      subjects: {},
+      classTeacher: newClassTeacher || undefined,
+      isElementary: newClassIsElementary
     }
       
     updateClasses([...data.classes, newClass])
     setNewClassName('')
+    setNewClassTeacher('')
+    setNewClassIsElementary(false)
     setIsAddingClass(false)
   }
 
@@ -178,6 +260,8 @@ const ClassesTab: React.FC = () => {
     if (classItem) {
       setEditingClass(classId)
       setEditingClassName(classItem.name)
+      setEditingClassTeacher(classItem.classTeacher || '')
+      setEditingClassIsElementary(classItem.isElementary || false)
     }
   }
 
@@ -186,7 +270,12 @@ const ClassesTab: React.FC = () => {
 
     const updatedClasses = data.classes.map(classItem => {
       if (classItem.id === editingClass) {
-        return { ...classItem, name: editingClassName.trim() }
+        return { 
+          ...classItem, 
+          name: editingClassName.trim(),
+          classTeacher: editingClassTeacher || undefined,
+          isElementary: editingClassIsElementary
+        }
       }
       return classItem
     })
@@ -194,18 +283,26 @@ const ClassesTab: React.FC = () => {
     updateClasses(updatedClasses)
     setEditingClass(null)
     setEditingClassName('')
+    setEditingClassTeacher('')
+    setEditingClassIsElementary(false)
   }
 
   const handleCancelEdit = () => {
     setEditingClass(null)
     setEditingClassName('')
+    setEditingClassTeacher('')
+    setEditingClassIsElementary(false)
   }
 
   const handleAddSubjectToClass = (classId: string, subjectId: string) => {
     const updatedClasses = data.classes.map(classItem => {
       if (classItem.id === classId) {
         const newSubjects = { ...classItem.subjects }
-        newSubjects[subjectId] = 1 // По умолчанию 1 урок в неделю
+        newSubjects[subjectId] = {
+          load: 1, // По умолчанию 1 урок в неделю
+          teacherId: undefined,
+          groups: undefined
+        }
         return { ...classItem, subjects: newSubjects }
       }
       return classItem
@@ -231,7 +328,22 @@ const ClassesTab: React.FC = () => {
       if (classItem.id === classId) {
         const newSubjects = { ...classItem.subjects }
         if (load > 0) {
-          newSubjects[subjectId] = load
+          const currentSubjectData = classItem.subjects[subjectId]
+          const isNewFormat = typeof currentSubjectData === 'object'
+          
+          if (isNewFormat) {
+            newSubjects[subjectId] = {
+              ...currentSubjectData,
+              load: load
+            }
+          } else {
+            // Миграция старого формата
+            newSubjects[subjectId] = {
+              load: load,
+              teacherId: undefined,
+              groups: undefined
+            }
+          }
         } else {
           delete newSubjects[subjectId]
         }
@@ -246,7 +358,8 @@ const ClassesTab: React.FC = () => {
     const classItem = data.classes.find(c => c.id === classId)
     if (!classItem) return
 
-    const currentLoad = classItem.subjects[subjectId] || 0
+    const currentSubjectData = classItem.subjects[subjectId]
+    const currentLoad = typeof currentSubjectData === 'object' ? currentSubjectData.load : (currentSubjectData || 0)
     const newLoad = Math.min(currentLoad + 1, 20) // Максимум 20 уроков
     handleUpdateSubjectLoad(classId, subjectId, newLoad)
   }
@@ -255,7 +368,8 @@ const ClassesTab: React.FC = () => {
     const classItem = data.classes.find(c => c.id === classId)
     if (!classItem) return
 
-    const currentLoad = classItem.subjects[subjectId] || 0
+    const currentSubjectData = classItem.subjects[subjectId]
+    const currentLoad = typeof currentSubjectData === 'object' ? currentSubjectData.load : (currentSubjectData || 0)
     const newLoad = Math.max(currentLoad - 1, 0) // Минимум 0 уроков
     handleUpdateSubjectLoad(classId, subjectId, newLoad)
   }
@@ -291,9 +405,22 @@ const ClassesTab: React.FC = () => {
     const classItem = data.classes.find(c => c.id === classId)
     if (!classItem) return []
 
-    return Object.entries(classItem.subjects).map(([subjectId, load]) => {
+    return Object.entries(classItem.subjects).map(([subjectId, subjectData]) => {
       const subject = data.subjects.find(s => s.id === subjectId)
-      return subject ? { ...subject, load } : null
+      if (!subject) return null
+      
+      const isNewFormat = typeof subjectData === 'object'
+      const load = isNewFormat ? subjectData.load : subjectData
+      const teacherId = isNewFormat ? subjectData.teacherId : undefined
+      const groups = isNewFormat ? subjectData.groups : undefined
+      
+      return { 
+        ...subject, 
+        load, 
+        teacherId, 
+        groups,
+        subjectData: isNewFormat ? subjectData : { load, teacherId: undefined, groups: undefined }
+      }
     }).filter(Boolean)
   }
 
@@ -483,31 +610,66 @@ const ClassesTab: React.FC = () => {
       {isAddingClass && (
         <div className="bg-gray-50 rounded-lg p-4">
           <h3 className="text-lg font-medium text-gray-900 mb-4">Создать новый класс</h3>
-          <div className="flex items-center space-x-3">
-            <input
-              type="text"
-              placeholder="Название класса (например: 5А, 6Б)"
-              value={newClassName}
-              onChange={(e) => setNewClassName(e.target.value)}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              onKeyDown={(e) => e.key === 'Enter' && handleAddClass()}
-            />
-            <button
-              onClick={handleAddClass}
-              disabled={!newClassName.trim()}
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              Создать
-            </button>
-            <button
-              onClick={() => {
-                setIsAddingClass(false)
-                setNewClassName('')
-              }}
-              className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-            >
-              Отмена
-            </button>
+          <div className="space-y-4">
+            <div className="flex items-center space-x-3">
+              <input
+                type="text"
+                placeholder="Название класса (например: 5А, 6Б)"
+                value={newClassName}
+                onChange={(e) => setNewClassName(e.target.value)}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                onKeyDown={(e) => e.key === 'Enter' && handleAddClass()}
+              />
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={newClassIsElementary}
+                  onChange={(e) => setNewClassIsElementary(e.target.checked)}
+                  className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                />
+                <span className="text-sm text-gray-700">Начальная школа (1-4 класс)</span>
+              </label>
+            </div>
+            
+            <div className="flex items-center space-x-3">
+              <label className="text-sm font-medium text-gray-700 min-w-[120px]">Классный руководитель:</label>
+              <select
+                value={newClassTeacher}
+                onChange={(e) => setNewClassTeacher(e.target.value)}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              >
+                <option value="">Выберите учителя</option>
+                {data.teachers.map(teacher => (
+                  <option key={teacher.id} value={teacher.id}>
+                    {getTeacherName(teacher.id)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={handleAddClass}
+                disabled={!newClassName.trim()}
+                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Создать
+              </button>
+              <button
+                onClick={() => {
+                  setIsAddingClass(false)
+                  setNewClassName('')
+                  setNewClassTeacher('')
+                  setNewClassIsElementary(false)
+                }}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                Отмена
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -544,32 +706,76 @@ const ClassesTab: React.FC = () => {
                     </div>
                     <div>
                       {editingClass === classItem.id ? (
-                        <div className="flex items-center space-x-2">
-                          <input
-                            type="text"
-                            value={editingClassName}
-                            onChange={(e) => setEditingClassName(e.target.value)}
-                            className="px-2 py-1 border border-gray-300 rounded text-sm font-semibold"
-                            onKeyDown={(e) => e.key === 'Enter' && handleSaveEdit()}
-                            autoFocus
-                          />
-                          <button
-                            onClick={handleSaveEdit}
-                            className="p-1 bg-green-600 text-white rounded hover:bg-green-700"
-                          >
-                            <Check className="w-3 h-3" />
-                          </button>
-                          <button
-                            onClick={handleCancelEdit}
-                            className="p-1 bg-gray-500 text-white rounded hover:bg-gray-600"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
+                        <div className="space-y-2">
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="text"
+                              value={editingClassName}
+                              onChange={(e) => setEditingClassName(e.target.value)}
+                              className="px-2 py-1 border border-gray-300 rounded text-sm font-semibold"
+                              onKeyDown={(e) => e.key === 'Enter' && handleSaveEdit()}
+                              autoFocus
+                            />
+                            <button
+                              onClick={handleSaveEdit}
+                              className="p-1 bg-green-600 text-white rounded hover:bg-green-700"
+                            >
+                              <Check className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={handleCancelEdit}
+                              className="p-1 bg-gray-500 text-white rounded hover:bg-gray-600"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <label className="flex items-center space-x-1">
+                              <input
+                                type="checkbox"
+                                checked={editingClassIsElementary}
+                                onChange={(e) => setEditingClassIsElementary(e.target.checked)}
+                                className="w-3 h-3 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                              />
+                              <span className="text-xs text-gray-600">Начальная школа</span>
+                            </label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <label className="text-xs text-gray-600 min-w-[80px]">Классный руководитель:</label>
+                            <select
+                              value={editingClassTeacher}
+                              onChange={(e) => setEditingClassTeacher(e.target.value)}
+                              className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs"
+                            >
+                              <option value="">Выберите учителя</option>
+                              {data.teachers.map(teacher => (
+                                <option key={teacher.id} value={teacher.id}>
+                                  {getTeacherName(teacher.id)}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
                         </div>
                       ) : (
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          {classItem.name}
-                        </h3>
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            {classItem.name}
+                          </h3>
+                          {(classItem.classTeacher || classItem.isElementary) && (
+                            <div className="mt-1 space-y-1">
+                              {classItem.isElementary && (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                  Начальная школа
+                                </span>
+                              )}
+                              {classItem.classTeacher && (
+                                <div className="text-xs text-gray-600">
+                                  Классный руководитель: {getTeacherName(classItem.classTeacher)}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -674,22 +880,32 @@ const ClassesTab: React.FC = () => {
                     <h4 className="text-sm font-medium text-gray-900 mb-2">Учебная нагрузка:</h4>
                     <div className="space-y-2">
                       {getClassSubjects(classItem.id).map((subject: any) => (
-                        <div key={subject.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-sm font-medium text-gray-900">{subject.name}</span>
-                            {subject.difficulty && (
-                              <span className={`px-1.5 py-0.5 text-xs rounded-full ${
-                                subject.difficulty === 'easy' ? 'bg-green-100 text-green-700' :
-                                subject.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                                'bg-red-100 text-red-700'
-                              }`}>
-                                {subject.difficulty === 'easy' ? 'Л' :
-                                 subject.difficulty === 'medium' ? 'С' : 'Т'}
-                              </span>
-                            )}
+                        <div key={subject.id} className="p-2 bg-gray-50 rounded-lg space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-sm font-medium text-gray-900">{subject.name}</span>
+                              {subject.difficulty && (
+                                <span className={`px-1.5 py-0.5 text-xs rounded-full ${
+                                  subject.difficulty === 'easy' ? 'bg-green-100 text-green-700' :
+                                  subject.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                                  'bg-red-100 text-red-700'
+                                }`}>
+                                  {subject.difficulty === 'easy' ? 'Л' :
+                                   subject.difficulty === 'medium' ? 'С' : 'Т'}
+                                </span>
+                              )}
+                            </div>
+                            
+                            <button
+                              onClick={() => handleRemoveSubjectFromClass(classItem.id, subject.id)}
+                              className="p-1 text-red-500 hover:bg-red-100 rounded transition-colors"
+                              title="Удалить предмет"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
                           </div>
                           
-                          <div className="flex items-center space-x-2">
+                          <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-1">
                               <button
                                 onClick={() => handleDecrementLoad(classItem.id, subject.id)}
@@ -716,14 +932,99 @@ const ClassesTab: React.FC = () => {
                               <span className="text-xs text-gray-500 ml-1">ур</span>
                             </div>
                             
-                            <button
-                              onClick={() => handleRemoveSubjectFromClass(classItem.id, subject.id)}
-                              className="p-1 text-red-500 hover:bg-red-100 rounded transition-colors"
-                              title="Удалить предмет"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
+                            {/* Селект учителя для 5+ классов */}
+                            {!classItem.isElementary && (
+                              <div className="flex items-center space-x-2">
+                                <label className="text-xs text-gray-600">Учитель:</label>
+                                <select
+                                  value={subject.teacherId || ''}
+                                  onChange={(e) => {
+                                    const updatedClasses = data.classes.map(c => {
+                                      if (c.id === classItem.id) {
+                                        const newSubjects = { ...c.subjects }
+                                        if (newSubjects[subject.id]) {
+                                          newSubjects[subject.id] = {
+                                            ...newSubjects[subject.id],
+                                            teacherId: e.target.value || undefined
+                                          }
+                                        }
+                                        return { ...c, subjects: newSubjects }
+                                      }
+                                      return c
+                                    })
+                                    updateClasses(updatedClasses)
+                                  }}
+                                  className="px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                                >
+                                  <option value="">Выберите учителя</option>
+                                  {getSubjectTeachers(subject.id).map(teacher => (
+                                    <option key={teacher.id} value={teacher.id}>
+                                      {getTeacherName(teacher.id)}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            )}
+                            
+                            {/* Для начальных классов показываем классного руководителя */}
+                            {classItem.isElementary && classItem.classTeacher && (
+                              <div className="text-xs text-gray-600">
+                                Учитель: {getTeacherName(classItem.classTeacher)}
+                              </div>
+                            )}
                           </div>
+                          
+                          {/* Группы предмета */}
+                          {subject.groups && subject.groups.length > 0 && (
+                            <div className="flex items-center space-x-2">
+                              <span className="text-xs text-gray-600">Группы:</span>
+                              <div className="flex flex-wrap gap-1">
+                                {subject.groups.map((group: string) => (
+                                  <span
+                                    key={group}
+                                    className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800"
+                                  >
+                                    {group}
+                                    <button
+                                      onClick={() => handleRemoveGroupFromSubject(classItem.id, subject.id, group)}
+                                      className="ml-1 text-purple-600 hover:text-purple-800"
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </button>
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Добавить группу */}
+                          {!classItem.isElementary && (
+                            <div className="flex items-center space-x-2">
+                              <input
+                                type="text"
+                                placeholder="Добавить группу (например: 1, 2, А, Б)"
+                                className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                                    handleAddGroupToSubject(classItem.id, subject.id, e.currentTarget.value.trim())
+                                    e.currentTarget.value = ''
+                                  }
+                                }}
+                              />
+                              <button
+                                onClick={(e) => {
+                                  const input = e.currentTarget.previousElementSibling as HTMLInputElement
+                                  if (input.value.trim()) {
+                                    handleAddGroupToSubject(classItem.id, subject.id, input.value.trim())
+                                    input.value = ''
+                                  }
+                                }}
+                                className="px-2 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700"
+                              >
+                                Добавить
+                              </button>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>

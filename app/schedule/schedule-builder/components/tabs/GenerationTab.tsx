@@ -2331,12 +2331,6 @@ export const GenerationTab = ({ onUpdateStatus }: GenerationTabProps) => {
                             </div>
                             
                             
-                            {/* Рекомендации */}
-                            {conflict.recommendation && (
-                              <div className="mt-2 p-2 bg-blue-50 rounded text-xs text-blue-700 border border-blue-200">
-                                💡 <strong>Рекомендация:</strong> {conflict.recommendation}
-                              </div>
-                            )}
                             
                             {/* Дополнительная информация */}
                             {(conflict.className || conflict.teacherName || conflict.subjectName || conflict.day) && (

@@ -1175,7 +1175,8 @@ export const GenerationTab = ({ onUpdateStatus }: GenerationTabProps) => {
                 day,
                 lessonNumber: lesson,
                 subjectName,
-                classroomName: availableClassroom.name
+                classroomName: availableClassroom.name,
+                className: classItem.name
               }
               
               const teacherEntry: TeacherSchedule = {

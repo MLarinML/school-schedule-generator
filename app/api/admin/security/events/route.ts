@@ -60,9 +60,7 @@ export async function GET(request: NextRequest) {
       userEmail: event.user?.email || 'Неизвестно',
       ip: event.ip,
       userAgent: event.userAgent,
-      timestamp: event.createdAt.toISOString(),
-      severity: event.severity,
-      status: event.status
+      timestamp: event.createdAt.toISOString()
     }))
 
     return NextResponse.json({ events: formattedEvents })

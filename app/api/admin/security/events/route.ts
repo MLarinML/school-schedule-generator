@@ -56,9 +56,8 @@ export async function GET(request: NextRequest) {
     const formattedEvents = securityEvents.map(event => ({
       id: event.id,
       type: event.type,
-      description: event.description,
       userId: event.userId,
-      userEmail: event.user.email,
+      userEmail: event.user?.email || 'Неизвестно',
       ip: event.ip,
       userAgent: event.userAgent,
       timestamp: event.createdAt.toISOString(),

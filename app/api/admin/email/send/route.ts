@@ -47,8 +47,7 @@ export async function POST(request: NextRequest) {
     // Отправляем email
     const emailService = new EmailService()
     
-    await emailService.sendEmail({
-      to,
+    await emailService.sendEmail(to, {
       subject,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -60,7 +59,8 @@ export async function POST(request: NextRequest) {
             Это тестовое сообщение, отправленное из админ-панели.
           </p>
         </div>
-      `
+      `,
+      text: message
     })
 
     return NextResponse.json({ message: 'Email отправлен успешно' })

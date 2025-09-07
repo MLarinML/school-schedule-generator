@@ -5,7 +5,7 @@ import { Plus, Users, Trash2, Edit3, Search, X, Copy, Check, Minus, Settings, Mo
 import { useScheduleBuilder } from '../../context/ScheduleBuilderContext'
 
 interface ClassesTabProps {
-  onUpdateStatus?: (tabId: string, completed: boolean, hasErrors?: boolean) => void
+  onUpdateStatus?: (tabId: any, completed: boolean, hasErrors?: boolean) => void
 }
 
 const ClassesTab: React.FC<ClassesTabProps> = ({ onUpdateStatus }) => {

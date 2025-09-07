@@ -27,7 +27,7 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
     type: '',
     capacity: '',
     subject: '',
-    teacherId: '',
+    teacherIds: [] as string[],
     supportedSubjects: [] as string[]
   })
   const [searchTerm, setSearchTerm] = useState('')
@@ -38,7 +38,7 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
     type: '',
     capacity: '',
     subject: '',
-    teacherId: '',
+    teacherIds: [] as string[],
     supportedSubjects: [] as string[]
   })
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
@@ -48,6 +48,8 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
   const [isBulkActionModalOpen, setIsBulkActionModalOpen] = useState(false)
   const [bulkAction, setBulkAction] = useState<'delete' | null>(null)
   const [isBulkProcessing, setIsBulkProcessing] = useState(false)
+  const [teacherSearchTerm, setTeacherSearchTerm] = useState('')
+  const [subjectSearchTerm, setSubjectSearchTerm] = useState('')
   
   // Состояние для показа инструкции импорта
   const [showImportInstructions, setShowImportInstructions] = useState(false)
@@ -67,12 +69,14 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
         type: newClassroom.type || undefined,
         capacity: newClassroom.capacity ? parseInt(newClassroom.capacity) : undefined,
         subject: newClassroom.subject || undefined,
-        teacherId: newClassroom.teacherId || undefined,
+        teacherIds: newClassroom.teacherIds.length > 0 ? newClassroom.teacherIds : undefined,
         supportedSubjects: newClassroom.supportedSubjects.length > 0 ? newClassroom.supportedSubjects : undefined
       }
       
       addClassroom(classroom)
-      setNewClassroom({ name: '', type: '', capacity: '', subject: '', teacherId: '', supportedSubjects: [] })
+      setNewClassroom({ name: '', type: '', capacity: '', subject: '', teacherIds: [], supportedSubjects: [] })
+      setTeacherSearchTerm('')
+      setSubjectSearchTerm('')
     }
   }
 
@@ -93,7 +97,7 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
       type: classroom.type || '',
       capacity: classroom.capacity?.toString() || '',
       subject: classroom.subject || '',
-      teacherId: classroom.teacherId || '',
+      teacherIds: classroom.teacherIds || [],
       supportedSubjects: classroom.supportedSubjects || []
     })
   }
@@ -106,7 +110,7 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
         type: editClassroom.type || undefined,
         capacity: editClassroom.capacity ? parseInt(editClassroom.capacity) : undefined,
         subject: editClassroom.subject || undefined,
-        teacherId: editClassroom.teacherId || undefined,
+        teacherIds: editClassroom.teacherIds.length > 0 ? editClassroom.teacherIds : undefined,
         supportedSubjects: editClassroom.supportedSubjects.length > 0 ? editClassroom.supportedSubjects : undefined
       }
       
@@ -115,13 +119,15 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
       ))
       
       setEditingClassroomId(null)
-      setEditClassroom({ name: '', type: '', capacity: '', subject: '', teacherId: '', supportedSubjects: [] })
+      setEditClassroom({ name: '', type: '', capacity: '', subject: '', teacherIds: [], supportedSubjects: [] })
     }
   }
 
   const handleCancelEdit = () => {
     setEditingClassroomId(null)
-    setEditClassroom({ name: '', type: '', capacity: '', subject: '', teacherId: '', supportedSubjects: [] })
+    setEditClassroom({ name: '', type: '', capacity: '', subject: '', teacherIds: [], supportedSubjects: [] })
+    setTeacherSearchTerm('')
+    setSubjectSearchTerm('')
   }
 
   const filteredClassrooms = data.classrooms
@@ -154,6 +160,29 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
     return `${teacher.lastName} ${teacher.firstName} ${teacher.middleName || ''}`.trim()
   }
 
+  // Функция для получения имен всех учителей кабинета
+  const getClassroomTeachers = (teacherIds?: string[]) => {
+    if (!teacherIds || teacherIds.length === 0) return []
+    return teacherIds.map(id => getTeacherName(id)).filter(Boolean)
+  }
+
+  // Функция для фильтрации учителей по поисковому запросу
+  const getFilteredTeachers = () => {
+    if (!teacherSearchTerm.trim()) return data.teachers
+    return data.teachers.filter(teacher => {
+      const fullName = `${teacher.lastName} ${teacher.firstName} ${teacher.middleName || ''}`.toLowerCase()
+      return fullName.includes(teacherSearchTerm.toLowerCase())
+    })
+  }
+
+  // Функция для фильтрации предметов по поисковому запросу
+  const getFilteredSubjects = () => {
+    if (!subjectSearchTerm.trim()) return data.subjects
+    return data.subjects.filter(subject => 
+      subject.name.toLowerCase().includes(subjectSearchTerm.toLowerCase())
+    )
+  }
+
   // Функция для получения названия предмета по ID
   const getSubjectName = (subjectId: string) => {
     const subject = data.subjects.find(s => s.id === subjectId)
@@ -180,23 +209,30 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
     }))
   }
 
-  // Функция для обновления закрепленного учителя кабинета с двусторонней синхронизацией
-  const handleUpdateClassroomTeacher = (classroomId: string, teacherId: string) => {
-    // Обновляем кабинет
-    const updatedClassrooms = data.classrooms.map(c => 
-      c.id === classroomId ? { ...c, teacherId: teacherId || undefined } : c
-    )
-    updateClassrooms(updatedClassrooms)
+  // Функция для добавления/удаления учителя из кабинета
+  const handleToggleClassroomTeacher = (classroomId: string, teacherId: string) => {
+    const classroom = data.classrooms.find(c => c.id === classroomId)
+    if (!classroom) return
 
-    // Обновляем учителей (убираем закрепление у других учителей для этого кабинета)
-    if (teacherId) {
-      updateTeacherClassroom(teacherId, classroomId)
+    const currentTeacherIds = classroom.teacherIds || []
+    const isTeacherAssigned = currentTeacherIds.includes(teacherId)
+
+    if (isTeacherAssigned) {
+      // Убираем учителя из кабинета
+      const updatedTeacherIds = currentTeacherIds.filter(id => id !== teacherId)
+      const updatedClassrooms = data.classrooms.map(c => 
+        c.id === classroomId ? { ...c, teacherIds: updatedTeacherIds.length > 0 ? updatedTeacherIds : undefined } : c
+      )
+      updateClassrooms(updatedClassrooms)
+      updateTeacherClassroom(teacherId, undefined)
     } else {
-      // Убираем закрепление кабинета у всех учителей
-      const classroom = data.classrooms.find(c => c.id === classroomId)
-      if (classroom?.teacherId) {
-        updateTeacherClassroom(classroom.teacherId, undefined)
-      }
+      // Добавляем учителя к кабинету
+      const updatedTeacherIds = [...currentTeacherIds, teacherId]
+      const updatedClassrooms = data.classrooms.map(c => 
+        c.id === classroomId ? { ...c, teacherIds: updatedTeacherIds } : c
+      )
+      updateClassrooms(updatedClassrooms)
+      updateTeacherClassroom(teacherId, classroomId)
     }
   }
 
@@ -450,20 +486,53 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
           
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Закрепленный учитель
+              Закрепленные учителя
             </label>
-            <select
-              value={newClassroom.teacherId}
-              onChange={(e) => setNewClassroom(prev => ({ ...prev, teacherId: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-            >
-              <option value="">Закрепить учителя</option>
-              {data.teachers.map(teacher => (
-                <option key={teacher.id} value={teacher.id}>
-                  {teacher.lastName} {teacher.firstName} {teacher.middleName || ''}
-                </option>
-              ))}
-            </select>
+            <div className="space-y-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <input
+                  type="text"
+                  placeholder="Поиск учителей..."
+                  value={teacherSearchTerm}
+                  onChange={(e) => setTeacherSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                />
+              </div>
+              <div className="max-h-32 overflow-y-auto border border-gray-300 rounded-lg p-2">
+                {getFilteredTeachers().length > 0 ? (
+                  getFilteredTeachers().map(teacher => (
+                    <label key={teacher.id} className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-1 rounded">
+                      <input
+                        type="checkbox"
+                        checked={newClassroom.teacherIds.includes(teacher.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setNewClassroom(prev => ({ 
+                              ...prev, 
+                              teacherIds: [...prev.teacherIds, teacher.id] 
+                            }))
+                          } else {
+                            setNewClassroom(prev => ({ 
+                              ...prev, 
+                              teacherIds: prev.teacherIds.filter(id => id !== teacher.id) 
+                            }))
+                          }
+                        }}
+                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                      />
+                      <span className="text-sm text-gray-700">
+                        {`${teacher.lastName} ${teacher.firstName} ${teacher.middleName || ''}`.trim()}
+                      </span>
+                    </label>
+                  ))
+                ) : (
+                  <div className="text-sm text-gray-500 text-center py-2">
+                    {teacherSearchTerm ? 'Учителя не найдены' : 'Нет учителей'}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -473,20 +542,40 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Поддерживаемые предметы
             </label>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-              {data.subjects
-                .sort((a, b) => a.name.localeCompare(b.name, 'ru'))
-                .map(subject => (
-                <label key={subject.id} className="flex items-center space-x-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={newClassroom.supportedSubjects.includes(subject.id)}
-                    onChange={() => toggleSupportedSubject(subject.id)}
-                    className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                  />
-                  <span className="text-sm text-gray-700">{subject.name}</span>
-                </label>
-              ))}
+            <div className="space-y-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <input
+                  type="text"
+                  placeholder="Поиск предметов..."
+                  value={subjectSearchTerm}
+                  onChange={(e) => setSubjectSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                />
+              </div>
+              <div className="max-h-32 overflow-y-auto border border-gray-300 rounded-lg p-2">
+                {getFilteredSubjects().length > 0 ? (
+                  <div className="grid grid-cols-1 gap-1">
+                    {getFilteredSubjects()
+                      .sort((a, b) => a.name.localeCompare(b.name, 'ru'))
+                      .map(subject => (
+                      <label key={subject.id} className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-1 rounded">
+                        <input
+                          type="checkbox"
+                          checked={newClassroom.supportedSubjects.includes(subject.id)}
+                          onChange={() => toggleSupportedSubject(subject.id)}
+                          className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                        />
+                        <span className="text-sm text-gray-700">{subject.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-gray-500 text-center py-2">
+                    {subjectSearchTerm ? 'Предметы не найдены' : 'Нет предметов'}
+                  </div>
+                )}
+              </div>
             </div>
             {newClassroom.supportedSubjects.length > 0 && (
               <div className="mt-2">
@@ -678,40 +767,90 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
                   />
                 </div>
                 
-                <select
-                  value={editClassroom.teacherId}
-                  onChange={(e) => {
-                    setEditClassroom(prev => ({ ...prev, teacherId: e.target.value }))
-                    handleUpdateClassroomTeacher(editingClassroomId!, e.target.value)
-                  }}
-                  className="w-full px-1 py-0.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
-                >
-                  <option value="">Закрепить учителя</option>
-                  {data.teachers.map(teacher => (
-                    <option key={teacher.id} value={teacher.id}>
-                      {teacher.lastName} {teacher.firstName} {teacher.middleName || ''}
-                    </option>
-                  ))}
-                </select>
+                <div className="space-y-1">
+                  <div className="relative">
+                    <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 w-3 h-3" />
+                    <input
+                      type="text"
+                      placeholder="Поиск учителей..."
+                      value={teacherSearchTerm}
+                      onChange={(e) => setTeacherSearchTerm(e.target.value)}
+                      className="w-full pl-7 pr-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                    />
+                  </div>
+                  <div className="max-h-20 overflow-y-auto border border-gray-300 rounded p-1">
+                    {getFilteredTeachers().length > 0 ? (
+                      getFilteredTeachers().map(teacher => (
+                        <label key={teacher.id} className="flex items-center space-x-1 cursor-pointer hover:bg-gray-50 p-0.5 rounded text-xs">
+                          <input
+                            type="checkbox"
+                            checked={editClassroom.teacherIds.includes(teacher.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setEditClassroom(prev => ({ 
+                                  ...prev, 
+                                  teacherIds: [...prev.teacherIds, teacher.id] 
+                                }))
+                                handleToggleClassroomTeacher(editingClassroomId!, teacher.id)
+                              } else {
+                                setEditClassroom(prev => ({ 
+                                  ...prev, 
+                                  teacherIds: prev.teacherIds.filter(id => id !== teacher.id) 
+                                }))
+                                handleToggleClassroomTeacher(editingClassroomId!, teacher.id)
+                              }
+                            }}
+                            className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 w-3 h-3"
+                          />
+                          <span className="text-xs text-gray-700 truncate">
+                            {`${teacher.lastName} ${teacher.firstName} ${teacher.middleName || ''}`.trim()}
+                          </span>
+                        </label>
+                      ))
+                    ) : (
+                      <div className="text-xs text-gray-500 text-center py-1">
+                        {teacherSearchTerm ? 'Не найдены' : 'Нет учителей'}
+                      </div>
+                    )}
+                  </div>
+                </div>
                 
                 {/* Поддерживаемые предметы в режиме редактирования */}
                 {data.subjects.length > 0 && (
                   <div className="mt-1">
                     <div className="text-xs text-gray-600 mb-1">Предметы:</div>
-                    <div className="max-h-20 overflow-y-auto">
-                      {data.subjects
-                        .sort((a, b) => a.name.localeCompare(b.name, 'ru'))
-                        .map(subject => (
-                        <label key={subject.id} className="flex items-center space-x-1 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={editClassroom.supportedSubjects.includes(subject.id)}
-                            onChange={() => toggleEditSupportedSubject(subject.id)}
-                            className="w-3 h-3 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                          />
-                          <span className="text-xs text-gray-700">{subject.name}</span>
-                        </label>
-                      ))}
+                    <div className="space-y-1">
+                      <div className="relative">
+                        <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 w-3 h-3" />
+                        <input
+                          type="text"
+                          placeholder="Поиск предметов..."
+                          value={subjectSearchTerm}
+                          onChange={(e) => setSubjectSearchTerm(e.target.value)}
+                          className="w-full pl-7 pr-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                        />
+                      </div>
+                      <div className="max-h-20 overflow-y-auto border border-gray-300 rounded p-1">
+                        {getFilteredSubjects().length > 0 ? (
+                          getFilteredSubjects()
+                            .sort((a, b) => a.name.localeCompare(b.name, 'ru'))
+                            .map(subject => (
+                            <label key={subject.id} className="flex items-center space-x-1 cursor-pointer hover:bg-gray-50 p-0.5 rounded">
+                              <input
+                                type="checkbox"
+                                checked={editClassroom.supportedSubjects.includes(subject.id)}
+                                onChange={() => toggleEditSupportedSubject(subject.id)}
+                                className="w-3 h-3 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                              />
+                              <span className="text-xs text-gray-700">{subject.name}</span>
+                            </label>
+                          ))
+                        ) : (
+                          <div className="text-xs text-gray-500 text-center py-1">
+                            {subjectSearchTerm ? 'Не найдены' : 'Нет предметов'}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -736,10 +875,19 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
                   </div>
                 )}
                 
-                {classroom.teacherId && (
-                  <div className="text-xs text-blue-600 truncate flex items-center">
-                    <Users className="w-3 h-3 mr-1" />
-                    {getTeacherName(classroom.teacherId)}
+                {classroom.teacherIds && classroom.teacherIds.length > 0 && (
+                  <div className="text-xs text-blue-600">
+                    <div className="flex items-center mb-1">
+                      <Users className="w-3 h-3 mr-1" />
+                      <span>Учителя ({classroom.teacherIds.length}):</span>
+                    </div>
+                    <div className="space-y-0.5">
+                      {getClassroomTeachers(classroom.teacherIds).map((teacherName, index) => (
+                        <div key={index} className="truncate pl-4">
+                          • {teacherName}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
                 

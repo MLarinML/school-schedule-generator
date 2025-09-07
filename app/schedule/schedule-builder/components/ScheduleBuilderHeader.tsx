@@ -4,7 +4,6 @@ import { Calendar, Home } from 'lucide-react'
 
 export const ScheduleBuilderHeader = () => {
   const handleGoHome = () => {
-    console.log('Navigating to home page...')
     window.location.href = '/'
   }
 

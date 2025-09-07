@@ -165,12 +165,12 @@ export const ImportTab = ({ onUpdateStatus }: ImportTabProps) => {
               return subjectObj?.id || ''
             }).filter(id => id !== ''),
             blockers: {
-              monday: [],
-              tuesday: [],
-              wednesday: [],
-              thursday: [],
-              friday: [],
-              saturday: []
+              monday: { fullDay: false, lessons: [] },
+              tuesday: { fullDay: false, lessons: [] },
+              wednesday: { fullDay: false, lessons: [] },
+              thursday: { fullDay: false, lessons: [] },
+              friday: { fullDay: false, lessons: [] },
+              saturday: { fullDay: false, lessons: [] }
             }
           }
 

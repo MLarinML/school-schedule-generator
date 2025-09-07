@@ -1,13 +1,27 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { Check, Star, Shield, Zap, Users, Building, ArrowRight, Calendar, Clock, Award, Rocket } from 'lucide-react'
 import { Header, Footer } from '../../components/layout'
 import { AuthModal } from '../../components/auth'
+import { PaymentModal } from '../../components/payments'
 
 const SubscriptionPage = () => {
-  const { isAuthModalOpen, closeAuthModal, returnTo, checkoutIntent, openAuthModal } = useAuth()
+  const { isAuthModalOpen, closeAuthModal, returnTo, checkoutIntent, openAuthModal, user } = useAuth()
+  const [paymentModal, setPaymentModal] = useState<{
+    isOpen: boolean
+    planId: string
+    planName: string
+    price: string
+    period: string
+  }>({
+    isOpen: false,
+    planId: '',
+    planName: '',
+    price: '',
+    period: ''
+  })
 
   // Автоматически открываем модальное окно входа, если в URL есть параметр auth=login
   useEffect(() => {
@@ -16,6 +30,33 @@ const SubscriptionPage = () => {
       openAuthModal()
     }
   }, [openAuthModal])
+
+  const handleSubscribe = (subscription: any) => {
+    if (!user) {
+      // Если пользователь не авторизован, открываем модальное окно входа
+      openAuthModal('/subscription', true)
+      return
+    }
+
+    // Если пользователь авторизован, открываем модальное окно оплаты
+    setPaymentModal({
+      isOpen: true,
+      planId: subscription.id,
+      planName: subscription.name,
+      price: subscription.price,
+      period: subscription.period
+    })
+  }
+
+  const handlePaymentSuccess = (subscription: any) => {
+    setPaymentModal(prev => ({ ...prev, isOpen: false }))
+    // Здесь можно добавить редирект или уведомление об успешной оплате
+    console.log('Подписка активирована:', subscription)
+  }
+
+  const handleClosePaymentModal = () => {
+    setPaymentModal(prev => ({ ...prev, isOpen: false }))
+  }
 
   const subscriptions = [
     {
@@ -160,7 +201,7 @@ const SubscriptionPage = () => {
                       {/* Кнопка подписки */}
                       <div className="text-center mb-6">
                         <button 
-                          onClick={() => openAuthModal('/subscription', true)}
+                          onClick={() => handleSubscribe(subscription)}
                           className={`w-full font-semibold py-3 px-6 rounded-xl transition-all duration-300 ${
                             subscription.popular
                               ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-lg hover:shadow-xl hover:scale-105'
@@ -259,6 +300,17 @@ const SubscriptionPage = () => {
         onClose={closeAuthModal}
         returnTo={returnTo}
         checkoutIntent={checkoutIntent}
+      />
+
+      {/* Payment Modal */}
+      <PaymentModal
+        isOpen={paymentModal.isOpen}
+        onClose={handleClosePaymentModal}
+        planId={paymentModal.planId}
+        planName={paymentModal.planName}
+        price={paymentModal.price}
+        period={paymentModal.period}
+        onSuccess={handlePaymentSuccess}
       />
     </>
   )

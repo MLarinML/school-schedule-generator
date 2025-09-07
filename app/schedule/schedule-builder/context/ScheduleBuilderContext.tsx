@@ -24,7 +24,7 @@ export interface Classroom {
   type?: string
   capacity?: number
   subject?: string
-  teacherId?: string // ID учителя, закрепленного за кабинетом
+  teacherIds?: string[] // массив ID учителей, закрепленных за кабинетом
   supportedSubjects?: string[] // массив ID предметов, которые поддерживает кабинет
 }
 
@@ -243,29 +243,22 @@ export const ScheduleBuilderProvider = ({ children }: { children: ReactNode }) =
         t.id === teacherId ? { ...t, classroomId } : t
       )
       
-      // Обновляем кабинеты (убираем закрепление у других учителей, если кабинет уже закреплен)
-      let updatedClassrooms = prev.classrooms
-      if (classroomId) {
-        // Убираем закрепление у других учителей для этого кабинета
-        updatedTeachers.forEach(teacher => {
-          if (teacher.id !== teacherId && teacher.classroomId === classroomId) {
-            teacher.classroomId = undefined
+      // Обновляем кабинеты
+      const updatedClassrooms = prev.classrooms.map(classroom => {
+        if (classroomId && classroom.id === classroomId) {
+          // Добавляем учителя к кабинету
+          const currentTeacherIds = classroom.teacherIds || []
+          if (!currentTeacherIds.includes(teacherId)) {
+            return { ...classroom, teacherIds: [...currentTeacherIds, teacherId] }
           }
-        })
-        
-        // Устанавливаем закрепление для выбранного учителя
-        updatedClassrooms = prev.classrooms.map(c => 
-          c.id === classroomId ? { ...c, teacherId } : c
-        )
-      } else {
-        // Убираем закрепление кабинета
-        const teacher = prev.teachers.find(t => t.id === teacherId)
-        if (teacher?.classroomId) {
-          updatedClassrooms = prev.classrooms.map(c => 
-            c.id === teacher.classroomId ? { ...c, teacherId: undefined } : c
-          )
+        } else {
+          // Убираем учителя из кабинета
+          const currentTeacherIds = classroom.teacherIds || []
+          const filteredTeacherIds = currentTeacherIds.filter(id => id !== teacherId)
+          return { ...classroom, teacherIds: filteredTeacherIds.length > 0 ? filteredTeacherIds : undefined }
         }
-      }
+        return classroom
+      })
       
       return {
         ...prev,

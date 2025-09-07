@@ -471,6 +471,20 @@ const ClassesTab: React.FC = () => {
             </button>
           </div>
 
+          {/* Кнопка "Выбрать все" */}
+          {data.classes.length > 0 && getFilteredClasses().length > 0 && (
+            <button
+              onClick={handleSelectAll}
+              className={`px-4 py-2 text-sm rounded-lg transition-colors ${
+                selectedClasses.length === getFilteredClasses().length
+                  ? 'bg-red-100 text-red-700 hover:bg-red-200 border border-red-300'
+                  : 'bg-blue-100 text-blue-700 hover:bg-blue-200 border border-blue-300'
+              }`}
+            >
+              {selectedClasses.length === getFilteredClasses().length ? 'Снять выделение' : 'Выбрать все'}
+            </button>
+          )}
+
           {/* Массовые действия */}
           {selectedClasses.length > 0 && (
             <div className="flex items-center gap-2">
@@ -1053,17 +1067,6 @@ const ClassesTab: React.FC = () => {
         </div>
       )}
 
-      {/* Кнопка "Выбрать все" */}
-      {data.classes.length > 0 && getFilteredClasses().length > 0 && (
-        <div className="flex justify-center">
-          <button
-            onClick={handleSelectAll}
-            className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            {selectedClasses.length === getFilteredClasses().length ? 'Снять выделение' : 'Выбрать все'}
-          </button>
-        </div>
-      )}
 
       {/* Пустое состояние */}
       {data.classes.length === 0 && (

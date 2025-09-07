@@ -454,7 +454,10 @@ export const GenerationTab = ({ onUpdateStatus }: GenerationTabProps) => {
 
     // Проверка нагрузок
     const hasLoads = data.classes.some(classItem => 
-      Object.values(classItem.subjects).some(load => load > 0)
+      Object.values(classItem.subjects).some(subjectData => {
+        const load = typeof subjectData === 'object' ? subjectData.load : subjectData
+        return load > 0
+      })
     )
 
     if (!hasLoads) {
@@ -537,6 +540,7 @@ export const GenerationTab = ({ onUpdateStatus }: GenerationTabProps) => {
       load: number
       teacherId: string
       groups?: string[]
+      fixedSlots?: Array<{day: number, lesson: number}>
     }> = []
     
     data.classes.forEach(classItem => {
@@ -572,45 +576,201 @@ export const GenerationTab = ({ onUpdateStatus }: GenerationTabProps) => {
         
         // Добавляем уроки для размещения
         for (let i = 0; i < load; i++) {
-          lessonsToPlace.push({
+          const lesson = {
             classItem,
             subjectId,
             subject,
             load: 1,
             teacherId,
-            groups: typeof subjectData === 'object' ? subjectData.groups : undefined
-          })
+            groups: typeof subjectData === 'object' ? subjectData.groups : undefined,
+            fixedSlots: subject.fixedSlots
+          }
+          
+          if (subject.fixedSlots && subject.fixedSlots.length > 0) {
+            console.log(`Создаем урок ${subject.name} для класса ${classItem.name} с закрепленными слотами:`, subject.fixedSlots)
+          }
+          
+          lessonsToPlace.push(lesson)
         }
       })
     })
     
+    // Функция для поиска подходящего кабинета с приоритетами
+    const findBestClassroom = (lesson: any, day: string, lessonNum: number) => {
+      const availableClassrooms = data.classrooms.filter(classroom => 
+        !classroomOccupancy[classroom.id][day][lessonNum]
+      )
+      
+      if (availableClassrooms.length === 0) return null
+      
+      // 1. Приоритет: кабинеты с закрепленным учителем для этого урока
+      const teacherClassroom = availableClassrooms.find(classroom => 
+        classroom.teacherIds?.includes(lesson.teacherId)
+      )
+      if (teacherClassroom) return teacherClassroom
+      
+      // 2. Приоритет: кабинеты с поддерживаемыми предметами
+      const subjectClassroom = availableClassrooms.find(classroom => 
+        classroom.supportedSubjects?.includes(lesson.subjectId)
+      )
+      if (subjectClassroom) return subjectClassroom
+      
+      // 3. Fallback: любой свободный кабинет (даже если не указаны поддерживаемые предметы)
+      return availableClassrooms[0]
+    }
+
+    // Функция для поиска кабинета с более гибкими правилами
+    const findFlexibleClassroom = (lesson: any, day: string, lessonNum: number) => {
+      const availableClassrooms = data.classrooms.filter(classroom => 
+        !classroomOccupancy[classroom.id][day][lessonNum]
+      )
+      
+      if (availableClassrooms.length === 0) return null
+      
+      // 1. Приоритет: кабинеты с закрепленным учителем
+      const teacherClassroom = availableClassrooms.find(classroom => 
+        classroom.teacherIds?.includes(lesson.teacherId)
+      )
+      if (teacherClassroom) return teacherClassroom
+      
+      // 2. Приоритет: кабинеты с поддерживаемыми предметами
+      const subjectClassroom = availableClassrooms.find(classroom => 
+        classroom.supportedSubjects?.includes(lesson.subjectId)
+      )
+      if (subjectClassroom) return subjectClassroom
+      
+      // 3. Приоритет: кабинеты без ограничений по предметам (поддерживают все)
+      const unrestrictedClassroom = availableClassrooms.find(classroom => 
+        !classroom.supportedSubjects || classroom.supportedSubjects.length === 0
+      )
+      if (unrestrictedClassroom) return unrestrictedClassroom
+      
+      // 4. Fallback: любой свободный кабинет (игнорируем ограничения по предметам)
+      return availableClassrooms[0]
+    }
+
     // Алгоритм размещения уроков
-    lessonsToPlace.forEach((lesson, index) => {
-      setGenerationProgress(Math.round((index / lessonsToPlace.length) * 100))
+    // Размещаем уроки
+    console.log(`Начинаем размещение ${lessonsToPlace.length} уроков`)
+    console.log('Все предметы в данных:', data.subjects.map(s => ({ name: s.name, difficulty: s.difficulty, fixedSlots: s.fixedSlots })))
+    
+    const lessonsWithFixedSlots = lessonsToPlace.filter(lesson => lesson.fixedSlots && lesson.fixedSlots.length > 0)
+    console.log(`Уроков с закрепленными слотами: ${lessonsWithFixedSlots.length}`)
+    lessonsWithFixedSlots.forEach(lesson => {
+      console.log(`- ${lesson.subject.name} для класса ${lesson.classItem.name}:`, lesson.fixedSlots)
+    })
+    
+    const hardSubjects = lessonsToPlace.filter(lesson => lesson.subject.difficulty === 'hard')
+    console.log(`Сложных предметов для размещения: ${hardSubjects.length}`)
+    hardSubjects.forEach(lesson => {
+      console.log(`- ${lesson.subject.name} для класса ${lesson.classItem.name} (сложность: ${lesson.subject.difficulty})`)
+    })
+    
+    // Сортируем уроки: сначала с закрепленными слотами, потом остальные
+    const sortedLessons = [...lessonsToPlace].sort((a, b) => {
+      const aHasFixed = a.fixedSlots && a.fixedSlots.length > 0
+      const bHasFixed = b.fixedSlots && b.fixedSlots.length > 0
+      
+      if (aHasFixed && !bHasFixed) return -1
+      if (!aHasFixed && bHasFixed) return 1
+      return 0
+    })
+    
+    console.log('Отсортированные уроки (сначала с закрепленными слотами):', sortedLessons.map(l => ({ 
+      name: l.subject.name, 
+      class: l.classItem.name, 
+      hasFixed: !!(l.fixedSlots && l.fixedSlots.length > 0) 
+    })))
+    
+    sortedLessons.forEach((lesson, index) => {
+      setGenerationProgress(Math.round((index / sortedLessons.length) * 100))
       
       let placed = false
       
-      // Пробуем разместить урок
-      for (let dayIndex = 0; dayIndex < days.length && !placed; dayIndex++) {
-        const day = days[dayIndex]
+      // Если есть закрепленные слоты, пробуем разместить в них сначала
+      if (lesson.fixedSlots && lesson.fixedSlots.length > 0) {
+        console.log(`Обрабатываем закрепленные слоты для урока ${lesson.subject.name} класса ${lesson.classItem.name}:`, lesson.fixedSlots)
         
-        for (let lessonNum = 1; lessonNum <= maxLessonsPerDay && !placed; lessonNum++) {
+        for (const fixedSlot of lesson.fixedSlots) {
+          const day = days[fixedSlot.day]
+          const lessonNum = fixedSlot.lesson
+          
+          console.log(`Пробуем разместить в закрепленном слоте: ${day}, урок ${lessonNum}`)
+          
+          // Предупреждаем о закреплении сложных предметов на запрещенных уроках
+          if (lesson.subject.difficulty === 'hard' && (lessonNum === 1 || lessonNum >= 7)) {
+            console.log(`⚠️ ВНИМАНИЕ: сложный предмет ${lesson.subject.name} закреплен на ${lessonNum === 1 ? 'первом' : `${lessonNum}-м`} уроке (нарушение правила - разрешены только уроки 2-6)`)
+          }
+          
+          // Проверяем доступность ресурсов для закрепленного слота
+          if (classOccupancy[lesson.classItem.name][day][lessonNum]) {
+            console.log(`Класс ${lesson.classItem.name} занят в ${day}, урок ${lessonNum}`)
+            continue
+          }
+          if (teacherOccupancy[lesson.teacherId][day][lessonNum]) {
+            console.log(`Учитель ${lesson.teacherId} занят в ${day}, урок ${lessonNum}`)
+            continue
+          }
+          
+          // Находим подходящий кабинет с приоритетами
+          const availableClassroom = findBestClassroom(lesson, day, lessonNum)
+          if (!availableClassroom) {
+            console.log(`Нет доступных кабинетов для ${day}, урок ${lessonNum}`)
+            continue
+          }
+          
+          console.log(`Размещаем урок в закрепленном слоте: ${day}, урок ${lessonNum}, кабинет ${availableClassroom.name}`)
+          
+          // Размещаем урок в закрепленном слоте
+          const slot: ScheduleSlot = {
+            day,
+            lesson: lessonNum,
+            className: lesson.classItem.name,
+            subjectId: lesson.subjectId,
+            teacherId: lesson.teacherId,
+            classroomId: availableClassroom.id,
+            group: lesson.groups?.[index % (lesson.groups?.length || 1)]
+          }
+          
+          schedule.push(slot)
+          
+          // Отмечаем занятость
+          classOccupancy[lesson.classItem.name][day][lessonNum] = true
+          teacherOccupancy[lesson.teacherId][day][lessonNum] = true
+          classroomOccupancy[availableClassroom.id][day][lessonNum] = true
+          
+          placed = true
+          break
+        }
+        
+        if (placed) {
+          console.log(`Урок ${lesson.subject.name} для класса ${lesson.classItem.name} успешно размещен в закрепленном слоте`)
+        } else {
+          console.log(`Не удалось разместить урок ${lesson.subject.name} для класса ${lesson.classItem.name} в закрепленных слотах`)
+        }
+      }
+      
+      // Если не удалось разместить в закрепленных слотах, пробуем обычное размещение
+      if (!placed) {
+        for (let dayIndex = 0; dayIndex < days.length && !placed; dayIndex++) {
+          const day = days[dayIndex]
+          
+          for (let lessonNum = 1; lessonNum <= maxLessonsPerDay && !placed; lessonNum++) {
           // Проверяем доступность ресурсов
           if (classOccupancy[lesson.classItem.name][day][lessonNum]) continue
           if (teacherOccupancy[lesson.teacherId][day][lessonNum]) continue
           
-          // Находим подходящий кабинет
-          const availableClassroom = data.classrooms.find(classroom => {
-            if (classroomOccupancy[classroom.id][day][lessonNum]) return false
-            
-            // Проверяем совместимость предмета и кабинета
-            if (classroom.supportedSubjects && classroom.supportedSubjects.length > 0) {
-              return classroom.supportedSubjects.includes(lesson.subjectId)
+          // Проверяем ограничения для сложных предметов
+          if (lesson.subject.difficulty === 'hard') {
+            // Сложные предметы размещаются только в уроках 2-6
+            if (lessonNum === 1 || lessonNum >= 7) {
+              console.log(`Сложный предмет ${lesson.subject.name} не может быть размещен на ${lessonNum === 1 ? 'первом' : lessonNum >= 7 ? `${lessonNum}-м` : 'последнем'} уроке (разрешены только уроки 2-6)`)
+              continue
             }
-            
-            return true
-          })
+          }
           
+          // Находим подходящий кабинет с гибкими правилами
+          const availableClassroom = findFlexibleClassroom(lesson, day, lessonNum)
           if (!availableClassroom) continue
           
           // Проверяем правила для сложных предметов
@@ -647,16 +807,216 @@ export const GenerationTab = ({ onUpdateStatus }: GenerationTabProps) => {
           
           placed = true
         }
+        }
+      }
+      
+      // Если не удалось разместить с обычными правилами, пробуем агрессивное размещение
+      if (!placed) {
+        // Пробуем разместить в любом свободном кабинете, игнорируя ограничения
+        for (let dayIndex = 0; dayIndex < days.length && !placed; dayIndex++) {
+          const day = days[dayIndex]
+          
+          for (let lessonNum = 1; lessonNum <= maxLessonsPerDay && !placed; lessonNum++) {
+            // Проверяем только базовую доступность ресурсов
+            if (classOccupancy[lesson.classItem.name][day][lessonNum]) continue
+            if (teacherOccupancy[lesson.teacherId][day][lessonNum]) continue
+            
+            // Проверяем ограничения для сложных предметов (даже в агрессивном режиме)
+            if (lesson.subject.difficulty === 'hard') {
+              // Сложные предметы размещаются только в уроках 2-6
+              if (lessonNum === 1 || lessonNum >= 7) {
+                console.log(`Агрессивное размещение: сложный предмет ${lesson.subject.name} не может быть размещен на ${lessonNum === 1 ? 'первом' : lessonNum >= 7 ? `${lessonNum}-м` : 'последнем'} уроке (разрешены только уроки 2-6)`)
+                continue
+              }
+            }
+            
+            // Ищем любой свободный кабинет
+            const anyClassroom = data.classrooms.find(classroom => 
+              !classroomOccupancy[classroom.id][day][lessonNum]
+            )
+            
+            if (!anyClassroom) continue
+            
+            // Размещаем урок в любом доступном кабинете
+            const slot: ScheduleSlot = {
+              day,
+              lesson: lessonNum,
+              className: lesson.classItem.name,
+              subjectId: lesson.subjectId,
+              teacherId: lesson.teacherId,
+              classroomId: anyClassroom.id,
+              group: lesson.groups?.[index % (lesson.groups?.length || 1)]
+            }
+            
+            schedule.push(slot)
+            
+            // Отмечаем занятость
+            classOccupancy[lesson.classItem.name][day][lessonNum] = true
+            teacherOccupancy[lesson.teacherId][day][lessonNum] = true
+            classroomOccupancy[anyClassroom.id][day][lessonNum] = true
+            
+            placed = true
+          }
+        }
+      }
+      
+      // Если все еще не удалось разместить, пробуем игнорировать блокеры учителя
+      if (!placed) {
+        for (let dayIndex = 0; dayIndex < days.length && !placed; dayIndex++) {
+          const day = days[dayIndex]
+          
+          for (let lessonNum = 1; lessonNum <= maxLessonsPerDay && !placed; lessonNum++) {
+            // Проверяем только доступность класса и кабинета
+            if (classOccupancy[lesson.classItem.name][day][lessonNum]) continue
+            
+            // Проверяем ограничения для сложных предметов (даже игнорируя блокеры учителя)
+            if (lesson.subject.difficulty === 'hard') {
+              // Сложные предметы размещаются только в уроках 2-6
+              if (lessonNum === 1 || lessonNum >= 7) {
+                console.log(`Игнорирование блокеров: сложный предмет ${lesson.subject.name} не может быть размещен на ${lessonNum === 1 ? 'первом' : lessonNum >= 7 ? `${lessonNum}-м` : 'последнем'} уроке (разрешены только уроки 2-6)`)
+                continue
+              }
+            }
+            
+            // Ищем любой свободный кабинет
+            const anyClassroom = data.classrooms.find(classroom => 
+              !classroomOccupancy[classroom.id][day][lessonNum]
+            )
+            
+            if (!anyClassroom) continue
+            
+            // Размещаем урок, игнорируя блокеры учителя
+            const slot: ScheduleSlot = {
+              day,
+              lesson: lessonNum,
+              className: lesson.classItem.name,
+              subjectId: lesson.subjectId,
+              teacherId: lesson.teacherId,
+              classroomId: anyClassroom.id,
+              group: lesson.groups?.[index % (lesson.groups?.length || 1)]
+            }
+            
+            schedule.push(slot)
+            
+            // Отмечаем занятость
+            classOccupancy[lesson.classItem.name][day][lessonNum] = true
+            teacherOccupancy[lesson.teacherId][day][lessonNum] = true
+            classroomOccupancy[anyClassroom.id][day][lessonNum] = true
+            
+            placed = true
+          }
+        }
+      }
+      
+      // Последняя попытка: размещаем в любом доступном слоте, игнорируя все ограничения кроме базовых
+      if (!placed) {
+        for (let dayIndex = 0; dayIndex < days.length && !placed; dayIndex++) {
+          const day = days[dayIndex]
+          
+          for (let lessonNum = 1; lessonNum <= maxLessonsPerDay && !placed; lessonNum++) {
+            // Ищем любой свободный кабинет
+            const anyClassroom = data.classrooms.find(classroom => 
+              !classroomOccupancy[classroom.id][day][lessonNum]
+            )
+            
+            if (!anyClassroom) continue
+            
+            // В экстремальном режиме предупреждаем о размещении сложных предметов на запрещенных уроках
+            if (lesson.subject.difficulty === 'hard' && (lessonNum === 1 || lessonNum >= 7)) {
+              console.log(`⚠️ ЭКСТРЕМАЛЬНОЕ РАЗМЕЩЕНИЕ: сложный предмет ${lesson.subject.name} размещается на ${lessonNum === 1 ? 'первом' : `${lessonNum}-м`} уроке (нарушение правила - разрешены только уроки 2-6)`)
+            }
+            
+            // Размещаем урок в любом доступном кабинете, игнорируя занятость класса
+            const slot: ScheduleSlot = {
+              day,
+              lesson: lessonNum,
+              className: lesson.classItem.name,
+              subjectId: lesson.subjectId,
+              teacherId: lesson.teacherId,
+              classroomId: anyClassroom.id,
+              group: lesson.groups?.[index % (lesson.groups?.length || 1)]
+            }
+            
+            schedule.push(slot)
+            
+            // Отмечаем занятость только кабинета и учителя
+            teacherOccupancy[lesson.teacherId][day][lessonNum] = true
+            classroomOccupancy[anyClassroom.id][day][lessonNum] = true
+            
+            placed = true
+          }
+        }
       }
       
       if (!placed) {
+        // Детальная диагностика проблемы
+        let diagnosticInfo = []
+        
+        // Проверяем доступность учителя
+        const teacher = data.teachers.find(t => t.id === lesson.teacherId)
+        if (!teacher) {
+          diagnosticInfo.push(`Учитель с ID ${lesson.teacherId} не найден`)
+        } else {
+          const teacherName = `${teacher.lastName} ${teacher.firstName}`
+          diagnosticInfo.push(`Учитель: ${teacherName}`)
+          
+          // Проверяем блокеры учителя
+          const teacherBlockers = Object.entries(teacher.blockers || {}).filter(([day, blocker]) => 
+            blocker.fullDay || blocker.lessons.length > 0
+          )
+          if (teacherBlockers.length > 0) {
+            diagnosticInfo.push(`Блокеры учителя: ${teacherBlockers.map(([day, blocker]) => 
+              blocker.fullDay ? `${day} (весь день)` : `${day} (уроки: ${blocker.lessons.join(', ')})`
+            ).join(', ')}`)
+          }
+        }
+        
+        // Проверяем доступность кабинетов
+        const totalClassrooms = data.classrooms.length
+        const availableClassrooms = data.classrooms.filter(classroom => {
+          // Проверяем, есть ли хотя бы один свободный слот для этого кабинета
+          return days.some(day => {
+            for (let lessonNum = 1; lessonNum <= maxLessonsPerDay; lessonNum++) {
+              if (!classroomOccupancy[classroom.id][day][lessonNum]) {
+                return true
+              }
+            }
+            return false
+          })
+        })
+        
+        diagnosticInfo.push(`Кабинеты: ${totalClassrooms} всего, ${availableClassrooms.length} с свободными слотами`)
+        
+        // Проверяем доступность класса
+        const classAvailableSlots = days.reduce((total, day) => {
+          let daySlots = 0
+          for (let lessonNum = 1; lessonNum <= maxLessonsPerDay; lessonNum++) {
+            if (!classOccupancy[lesson.classItem.name][day][lessonNum]) {
+              daySlots++
+            }
+          }
+          return total + daySlots
+        }, 0)
+        
+        diagnosticInfo.push(`Свободные слоты для класса ${lesson.classItem.name}: ${classAvailableSlots}`)
+        
+        // Проверяем совместимость кабинетов с предметом
+        const compatibleClassrooms = data.classrooms.filter(classroom => {
+          if (!classroom.supportedSubjects || classroom.supportedSubjects.length === 0) {
+            return true // Кабинет без ограничений
+          }
+          return classroom.supportedSubjects.includes(lesson.subjectId)
+        })
+        
+        diagnosticInfo.push(`Кабинеты совместимые с предметом "${lesson.subject.name}": ${compatibleClassrooms.length}`)
+        
         violations.push({
           type: 'hard',
           constraint: 'loadFulfillment',
           message: `Не удалось разместить урок ${lesson.subject.name} для класса ${lesson.classItem.name}`,
           severity: 'error',
-          details: 'Недостаточно свободных слотов для размещения всех уроков',
-          recommendation: 'Проверьте доступность учителей и кабинетов, возможно нужно добавить больше ресурсов'
+          details: `Диагностика: ${diagnosticInfo.join('; ')}`,
+          recommendation: 'Проверьте блокеры учителя, доступность кабинетов и совместимость предметов с кабинетами'
         })
       }
     })

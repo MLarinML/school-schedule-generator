@@ -93,7 +93,6 @@ const Header = ({ onOpenAuth }: HeaderProps) => {
                       try {
                         smoothScrollToHref(item.href)
                       } catch (error) {
-                        console.warn('Navigation error:', error)
                         // Fallback: обычный переход
                         window.location.href = item.href
                       }
@@ -214,7 +213,6 @@ const Header = ({ onOpenAuth }: HeaderProps) => {
                       try {
                         smoothScrollToHref(item.href)
                       } catch (error) {
-                        console.warn('Mobile navigation error:', error)
                         // Fallback: обычный переход
                         window.location.href = item.href
                       }

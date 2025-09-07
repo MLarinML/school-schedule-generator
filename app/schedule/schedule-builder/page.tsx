@@ -71,7 +71,6 @@ export default function ScheduleBuilderPage() {
           </div>
           <button 
             onClick={() => {
-              console.log('Opening auth modal...')
               openAuthModal('/schedule/schedule-builder')
             }}
             className="btn-primary"

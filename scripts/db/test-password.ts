@@ -1,4 +1,4 @@
-import { PasswordManager } from '../lib/auth/password'
+import { PasswordManager } from '../../lib/auth/password'
 
 async function testPassword() {
   const password = 'TestPassword123'

@@ -1173,7 +1173,6 @@ export const GenerationTab = ({ onUpdateStatus }: GenerationTabProps) => {
               // Размещаем урок
               const studentEntry: StudentSchedule = {
                 day,
-,
                 lessonNumber: lesson,
                 subjectName,
                 classroomName: availableClassroom.name

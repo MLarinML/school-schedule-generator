@@ -20,8 +20,7 @@ export const SubjectsTab = ({ onUpdateStatus }: SubjectsTabProps) => {
   const { data, addSubject, removeSubject, updateSubjects, updateSubject } = useScheduleBuilder()
   const [newSubject, setNewSubject] = useState({
     name: '',
-    difficulty: '',
-    isGrouped: false
+    difficulty: ''
   })
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('')
@@ -45,12 +44,14 @@ export const SubjectsTab = ({ onUpdateStatus }: SubjectsTabProps) => {
     onUpdateStatus('subjects', hasSubjects && !hasErrors, hasErrors)
   }, [data.subjects]) // убираем onUpdateStatus из зависимостей
 
-  // Фильтрация предметов
-  const filteredSubjects = data.subjects.filter(subject => {
-    const matchesSearch = subject.name.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesDifficulty = !selectedDifficulty || subject.difficulty === selectedDifficulty
-    return matchesSearch && matchesDifficulty
-  })
+  // Фильтрация и сортировка предметов
+  const filteredSubjects = data.subjects
+    .filter(subject => {
+      const matchesSearch = subject.name.toLowerCase().includes(searchQuery.toLowerCase())
+      const matchesDifficulty = !selectedDifficulty || subject.difficulty === selectedDifficulty
+      return matchesSearch && matchesDifficulty
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, 'ru'))
 
   const handleAddSubject = () => {
     if (newSubject.name.trim()) {
@@ -58,11 +59,11 @@ export const SubjectsTab = ({ onUpdateStatus }: SubjectsTabProps) => {
         id: Date.now().toString(),
         name: newSubject.name.trim(),
         difficulty: newSubject.difficulty as 'easy' | 'medium' | 'hard' || undefined,
-        isGrouped: newSubject.isGrouped
+        isGrouped: false
       }
       
       addSubject(subject)
-      setNewSubject({ name: '', difficulty: '', isGrouped: false })
+      setNewSubject({ name: '', difficulty: '' })
     }
   }
 
@@ -291,25 +292,6 @@ export const SubjectsTab = ({ onUpdateStatus }: SubjectsTabProps) => {
           </div>
         </div>
         
-        <div className="mt-4">
-          <label className="flex items-center space-x-3">
-            <input
-              type="checkbox"
-              checked={newSubject.isGrouped}
-              onChange={(e) => setNewSubject(prev => ({ ...prev, isGrouped: e.target.checked }))}
-              className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-            />
-            <div>
-              <span className="text-sm font-medium text-gray-700">
-                Групповое деление
-              </span>
-              <p className="text-xs text-gray-500">
-                Отметьте, если предмет ведется в группах или параллелях
-              </p>
-            </div>
-          </label>
-        </div>
-        
         <div className="mt-6">
           <button
             onClick={handleAddSubject}
@@ -475,13 +457,6 @@ export const SubjectsTab = ({ onUpdateStatus }: SubjectsTabProps) => {
               </div>
               
               <div className="space-y-2">
-                {subject.isGrouped && (
-                  <div className="flex items-center space-x-2 text-sm text-blue-600">
-                    <Users className="w-4 h-4" />
-                    <span>Групповое деление</span>
-                  </div>
-                )}
-                
                 {!subject.difficulty && (
                   <div className="flex items-center space-x-2 text-sm text-gray-500">
                     <AlertCircle className="w-4 h-4" />
@@ -525,7 +500,6 @@ export const SubjectsTab = ({ onUpdateStatus }: SubjectsTabProps) => {
         </h4>
         <ul className="text-sm text-blue-800 space-y-1">
           <li>• <strong>Сложность</strong> — влияет на распределение предметов в расписании</li>
-          <li>• <strong>Групповое деление</strong> — отметьте для предметов, которые ведутся в группах (например, иностранные языки)</li>
           <li>• Все предметы должны иметь уникальные названия</li>
         </ul>
       </div>

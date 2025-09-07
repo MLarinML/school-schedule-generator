@@ -26,7 +26,8 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
     name: '',
     type: '',
     capacity: '',
-    subject: ''
+    subject: '',
+    teacherId: ''
   })
   const [searchTerm, setSearchTerm] = useState('')
   const [deletingClassroomId, setDeletingClassroomId] = useState<string | null>(null)
@@ -35,7 +36,8 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
     name: '',
     type: '',
     capacity: '',
-    subject: ''
+    subject: '',
+    teacherId: ''
   })
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const [importedClassrooms, setImportedClassrooms] = useState<string[]>([])
@@ -62,11 +64,12 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
         name: newClassroom.name.trim(),
         type: newClassroom.type || undefined,
         capacity: newClassroom.capacity ? parseInt(newClassroom.capacity) : undefined,
-        subject: newClassroom.subject || undefined
+        subject: newClassroom.subject || undefined,
+        teacherId: newClassroom.teacherId || undefined
       }
       
       addClassroom(classroom)
-      setNewClassroom({ name: '', type: '', capacity: '', subject: '' })
+      setNewClassroom({ name: '', type: '', capacity: '', subject: '', teacherId: '' })
     }
   }
 
@@ -86,7 +89,8 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
       name: classroom.name,
       type: classroom.type || '',
       capacity: classroom.capacity?.toString() || '',
-      subject: classroom.subject || ''
+      subject: classroom.subject || '',
+      teacherId: classroom.teacherId || ''
     })
   }
 
@@ -97,7 +101,8 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
         name: editClassroom.name.trim(),
         type: editClassroom.type || undefined,
         capacity: editClassroom.capacity ? parseInt(editClassroom.capacity) : undefined,
-        subject: editClassroom.subject || undefined
+        subject: editClassroom.subject || undefined,
+        teacherId: editClassroom.teacherId || undefined
       }
       
       updateClassrooms(data.classrooms.map(c => 
@@ -105,18 +110,44 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
       ))
       
       setEditingClassroomId(null)
-      setEditClassroom({ name: '', type: '', capacity: '', subject: '' })
+      setEditClassroom({ name: '', type: '', capacity: '', subject: '', teacherId: '' })
     }
   }
 
   const handleCancelEdit = () => {
     setEditingClassroomId(null)
-    setEditClassroom({ name: '', type: '', capacity: '', subject: '' })
+    setEditClassroom({ name: '', type: '', capacity: '', subject: '', teacherId: '' })
   }
 
-  const filteredClassrooms = data.classrooms.filter(classroom =>
-    classroom.name.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredClassrooms = data.classrooms
+    .filter(classroom =>
+      classroom.name.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => {
+      // Извлекаем числа из названий кабинетов
+      const aNumber = a.name.match(/(\d+)/)?.[1]
+      const bNumber = b.name.match(/(\d+)/)?.[1]
+      
+      // Если оба содержат числа, сортируем по числам
+      if (aNumber && bNumber) {
+        return parseInt(aNumber) - parseInt(bNumber)
+      }
+      
+      // Если только один содержит число, он идет первым
+      if (aNumber && !bNumber) return -1
+      if (!aNumber && bNumber) return 1
+      
+      // Если оба не содержат числа, сортируем по алфавиту
+      return a.name.localeCompare(b.name, 'ru')
+    })
+
+  // Функция для получения имени учителя по ID
+  const getTeacherName = (teacherId?: string) => {
+    if (!teacherId) return null
+    const teacher = data.teachers.find(t => t.id === teacherId)
+    if (!teacher) return null
+    return `${teacher.lastName} ${teacher.firstName} ${teacher.middleName || ''}`.trim()
+  }
 
   // Группируем аудитории по десяткам
   const groupClassroomsByTens = (classrooms: typeof filteredClassrooms) => {
@@ -308,7 +339,7 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
           
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Название кабинета *
@@ -363,6 +394,24 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               placeholder="Например: Математика"
             />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Закрепленный учитель
+            </label>
+            <select
+              value={newClassroom.teacherId}
+              onChange={(e) => setNewClassroom(prev => ({ ...prev, teacherId: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            >
+              <option value="">Закрепить учителя</option>
+              {data.teachers.map(teacher => (
+                <option key={teacher.id} value={teacher.id}>
+                  {teacher.lastName} {teacher.firstName} {teacher.middleName || ''}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
         
@@ -545,6 +594,19 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
                     placeholder="Предмет"
                   />
                 </div>
+                
+                <select
+                  value={editClassroom.teacherId}
+                  onChange={(e) => setEditClassroom(prev => ({ ...prev, teacherId: e.target.value }))}
+                  className="w-full px-1 py-0.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                >
+                  <option value="">Закрепить учителя</option>
+                  {data.teachers.map(teacher => (
+                    <option key={teacher.id} value={teacher.id}>
+                      {teacher.lastName} {teacher.firstName} {teacher.middleName || ''}
+                    </option>
+                  ))}
+                </select>
               </div>
             ) : (
               <div className="space-y-0.5">
@@ -563,6 +625,13 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
                 {classroom.subject && (
                   <div className="text-xs text-gray-600 truncate">
                     {classroom.subject}
+                  </div>
+                )}
+                
+                {classroom.teacherId && (
+                  <div className="text-xs text-blue-600 truncate flex items-center">
+                    <Users className="w-3 h-3 mr-1" />
+                    {getTeacherName(classroom.teacherId)}
                   </div>
                 )}
               </div>

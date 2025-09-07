@@ -23,6 +23,7 @@ export interface Classroom {
   type?: string
   capacity?: number
   subject?: string
+  teacherId?: string // ID учителя, закрепленного за кабинетом
 }
 
 export interface Subject {

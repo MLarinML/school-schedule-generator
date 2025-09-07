@@ -60,7 +60,7 @@ export async function PATCH(
         const newStatus = targetUser.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE'
         await prisma.user.update({
           where: { id: userId },
-          data: { status: newStatus }
+          data: { status: newStatus as any }
         })
         return NextResponse.json({ 
           message: `Пользователь ${newStatus === 'ACTIVE' ? 'разблокирован' : 'заблокирован'}` 

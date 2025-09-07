@@ -6,9 +6,12 @@ const prisma = new PrismaClient()
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
+    // Получаем параметры
+    const { userId } = await params
+    
     // Проверяем авторизацию
     const token = request.cookies.get('auth-token')?.value
 
@@ -41,7 +44,6 @@ export async function PATCH(
     }
 
     const { action } = await request.json()
-    const { userId } = params
 
     // Проверяем, что пользователь существует
     const targetUser = await prisma.user.findUnique({

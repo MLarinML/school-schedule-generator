@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '../../auth/session/route'
+import { JWTManager } from '../../../../lib/auth/jwt'
 
 // Типы подписок
 const SUBSCRIPTION_PLANS = {
@@ -26,10 +25,18 @@ const SUBSCRIPTION_PLANS = {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    // Получаем токен из cookie
+    const token = request.cookies.get('auth-token')?.value
     
-    if (!session?.user?.id) {
+    if (!token) {
       return NextResponse.json({ error: 'Необходима авторизация' }, { status: 401 })
+    }
+
+    // Верифицируем токен
+    const payload = JWTManager.verifyToken(token)
+    
+    if (!payload) {
+      return NextResponse.json({ error: 'Сессия истекла или недействительна' }, { status: 401 })
     }
 
     const { planId } = await request.json()
@@ -49,7 +56,7 @@ export async function POST(request: NextRequest) {
       currency: 'rub',
       planId,
       planName: plan.name,
-      userId: session.user.id,
+      userId: payload.userId,
       status: 'requires_payment_method',
       clientSecret: `pi_${Date.now()}_secret_${Math.random().toString(36).substr(2, 9)}`
     }

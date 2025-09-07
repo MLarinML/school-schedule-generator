@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '../../auth/session/route'
+import { JWTManager } from '../../../../lib/auth/jwt'
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    // Получаем токен из cookie
+    const token = request.cookies.get('auth-token')?.value
     
-    if (!session?.user?.id) {
+    if (!token) {
       return NextResponse.json({ error: 'Необходима авторизация' }, { status: 401 })
+    }
+
+    // Верифицируем токен
+    const payload = JWTManager.verifyToken(token)
+    
+    if (!payload) {
+      return NextResponse.json({ error: 'Сессия истекла или недействительна' }, { status: 401 })
     }
 
     // В реальном приложении здесь будет запрос к базе данных
@@ -15,7 +22,7 @@ export async function GET(request: NextRequest) {
     
     const mockSubscription = {
       id: 'sub_123456789',
-      userId: session.user.id,
+      userId: payload.userId,
       planId: 'semiannual',
       status: 'active',
       startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 дней назад

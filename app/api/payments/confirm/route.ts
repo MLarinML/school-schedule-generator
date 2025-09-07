@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '../../auth/session/route'
+import { JWTManager } from '../../../../lib/auth/jwt'
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    // Получаем токен из cookie
+    const token = request.cookies.get('auth-token')?.value
     
-    if (!session?.user?.id) {
+    if (!token) {
       return NextResponse.json({ error: 'Необходима авторизация' }, { status: 401 })
+    }
+
+    // Верифицируем токен
+    const payload = JWTManager.verifyToken(token)
+    
+    if (!payload) {
+      return NextResponse.json({ error: 'Сессия истекла или недействительна' }, { status: 401 })
     }
 
     const { paymentIntentId, planId } = await request.json()
@@ -21,7 +28,7 @@ export async function POST(request: NextRequest) {
     
     const subscription = {
       id: `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      userId: session.user.id,
+      userId: payload.userId,
       planId,
       status: 'active',
       startDate: new Date().toISOString(),

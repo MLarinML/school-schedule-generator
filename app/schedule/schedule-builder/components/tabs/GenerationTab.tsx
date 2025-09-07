@@ -1473,7 +1473,11 @@ export const GenerationTab = ({ onUpdateStatus }: GenerationTabProps) => {
     if (validationConflicts.some(c => c.severity === 'error')) {
       setGenerationResult({
         success: false,
-        conflicts: validationConflicts,
+        conflicts: validationConflicts.map(conflict => ({
+          type: conflict.type === 'elementary' || conflict.type === 'difficult_subjects' || conflict.type === 'resource_conflict' ? 'load' : conflict.type,
+          message: conflict.message,
+          severity: conflict.severity
+        })),
         studentSchedule: [],
         teacherSchedule: []
       })

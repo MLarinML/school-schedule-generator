@@ -1184,6 +1184,7 @@ export const GenerationTab = ({ onUpdateStatus }: GenerationTabProps) => {
                 day,
                 lessonNumber: lesson,
                 subjectName,
+                className: classItem.name
               }
               
               studentSchedule.push(studentEntry)

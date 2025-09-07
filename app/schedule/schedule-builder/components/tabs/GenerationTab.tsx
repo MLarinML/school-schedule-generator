@@ -1257,7 +1257,7 @@ export const GenerationTab = ({ onUpdateStatus }: GenerationTabProps) => {
           }
           
           // Проверяем общую загруженность класса
-          const classTotalLessons = Object.values(classItem.subjects).reduce((sum, subjectLoad) => sum + subjectLoad, 0)
+          const classTotalLessons = Object.values(classItem.subjects).reduce((sum, subjectData) => sum + subjectData.load, 0)
           const maxPossibleLessons = days.length * maxLessonsPerDay
           
           if (classTotalLessons > maxPossibleLessons) {

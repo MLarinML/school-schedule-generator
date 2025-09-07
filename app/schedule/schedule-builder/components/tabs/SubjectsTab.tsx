@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Trash2, BookOpen, Users, AlertCircle, Search, Upload, FileSpreadsheet, Edit, X } from 'lucide-react'
+import React from 'react'
+import { Plus, Trash2, BookOpen, Users, AlertCircle, Search, Upload, FileSpreadsheet, Edit, X, Calendar } from 'lucide-react'
 import { useScheduleBuilder, Subject } from '../../context/ScheduleBuilderContext'
 import { TabType } from '../../page'
 import * as XLSX from 'xlsx'
@@ -15,6 +16,12 @@ const DIFFICULTY_LEVELS = [
   { value: 'medium', label: 'Средний', color: 'text-yellow-600 bg-yellow-100', description: 'Средней сложности' },
   { value: 'hard', label: 'Сложный', color: 'text-red-600 bg-red-100', description: 'Сложные предметы' }
 ]
+
+const DAYS_OF_WEEK = [
+  'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'
+]
+
+const LESSONS = [1, 2, 3, 4, 5, 6, 7, 8]
 
 export const SubjectsTab = ({ onUpdateStatus }: SubjectsTabProps) => {
   const { data, addSubject, removeSubject, updateSubjects, updateSubject } = useScheduleBuilder()
@@ -41,6 +48,11 @@ export const SubjectsTab = ({ onUpdateStatus }: SubjectsTabProps) => {
   const [editingSubjectId, setEditingSubjectId] = useState<string | null>(null)
   const [editingSubjectName, setEditingSubjectName] = useState('')
   const [editingSubjectDifficulty, setEditingSubjectDifficulty] = useState('')
+  
+  // Состояния для закрепления предметов
+  const [fixingSubjectId, setFixingSubjectId] = useState<string | null>(null)
+  const [fixedSlots, setFixedSlots] = useState<{ day: number; lesson: number }[]>([])
+  const [isFixationModalOpen, setIsFixationModalOpen] = useState(false)
 
   useEffect(() => {
     const hasSubjects = data.subjects.length > 0
@@ -311,19 +323,92 @@ export const SubjectsTab = ({ onUpdateStatus }: SubjectsTabProps) => {
     return existingGroups.length === 0
   }
 
+  // Функции для закрепления предметов
+  const handleOpenFixationModal = (subject: Subject) => {
+    setFixingSubjectId(subject.id)
+    setFixedSlots(subject.fixedSlots || [])
+    setIsFixationModalOpen(true)
+  }
+
+  const handleCloseFixationModal = () => {
+    setIsFixationModalOpen(false)
+    setFixingSubjectId(null)
+    setFixedSlots([])
+  }
+
+  const handleToggleFixedSlot = (day: number, lesson: number) => {
+    const slot = { day, lesson }
+    const isFixed = fixedSlots.some(s => s.day === day && s.lesson === lesson)
+    
+    if (isFixed) {
+      setFixedSlots(prev => prev.filter(s => !(s.day === day && s.lesson === lesson)))
+    } else {
+      setFixedSlots(prev => [...prev, slot])
+    }
+  }
+
+  const handleSaveFixation = () => {
+    if (!fixingSubjectId) return
+
+    const updatedSubjects = data.subjects.map(subject => 
+      subject.id === fixingSubjectId 
+        ? { ...subject, fixedSlots: fixedSlots.length > 0 ? fixedSlots : undefined }
+        : subject
+    )
+    
+    updateSubjects(updatedSubjects)
+    handleCloseFixationModal()
+  }
+
   const getDifficultyInfo = (difficulty: string) => {
     return DIFFICULTY_LEVELS.find(d => d.value === difficulty) || DIFFICULTY_LEVELS[1]
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="max-w-7xl mx-auto">
       <div className="mb-8">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">
           Управление предметами
         </h2>
-        <p className="text-gray-600">
+        <p className="text-gray-600 mb-4">
           Добавьте учебные предметы и настройте их параметры для корректного распределения в расписании
         </p>
+        
+        {/* Мини-инструкция по значкам */}
+        <div className="bg-gradient-to-r from-slate-50 to-blue-50 border border-slate-200 rounded-md px-3 py-2">
+          <div className="text-xs">
+            <div className="grid grid-cols-4 gap-4">
+              <div className="flex items-center space-x-2" title="Изменить название и сложность предмета">
+                <Edit className="w-6 h-6 text-blue-600" />
+                <div>
+                  <div className="text-slate-600 font-medium">Редактировать</div>
+                  <div className="text-slate-500 text-xs">изменить название и сложность</div>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2" title="Разделить предмет на две группы (1 и 2)">
+                <Users className="w-6 h-6 text-purple-600" />
+                <div>
+                  <div className="text-slate-600 font-medium">Группы</div>
+                  <div className="text-slate-500 text-xs">разделить на две группы</div>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2" title="Закрепить предмет за определенными днями и уроками">
+                <Calendar className="w-6 h-6 text-orange-600" />
+                <div>
+                  <div className="text-slate-600 font-medium">Время</div>
+                  <div className="text-slate-500 text-xs">закрепить за днями и уроками</div>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2" title="Удалить предмет из списка">
+                <Trash2 className="w-6 h-6 text-red-600" />
+                <div>
+                  <div className="text-slate-600 font-medium">Удалить</div>
+                  <div className="text-slate-500 text-xs">убрать предмет</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Добавление нового предмета */}
@@ -568,6 +653,11 @@ export const SubjectsTab = ({ onUpdateStatus }: SubjectsTabProps) => {
                             Группа
                           </span>
                         )}
+                        {subject.fixedSlots && subject.fixedSlots.length > 0 && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700 ml-2">
+                            Закреплен ({subject.fixedSlots.length})
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>
@@ -597,6 +687,13 @@ export const SubjectsTab = ({ onUpdateStatus }: SubjectsTabProps) => {
                       </button>
                     </>
                   )}
+                  <button
+                    onClick={() => handleOpenFixationModal(subject)}
+                    className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95"
+                    title="Закрепить за временными слотами"
+                  >
+                    <Calendar className="w-4 h-4" />
+                  </button>
                   <button
                     onClick={() => handleRemoveSubject(subject.id)}
                     disabled={deletingSubjectId === subject.id}
@@ -958,6 +1055,87 @@ export const SubjectsTab = ({ onUpdateStatus }: SubjectsTabProps) => {
                 <p className="text-sm text-gray-500 mt-3">
                   Нажмите для выбора Excel файла с данными предметов
                 </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно для закрепления предметов */}
+      {isFixationModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Закрепление предмета за временными слотами
+              </h3>
+              <button
+                onClick={handleCloseFixationModal}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="mb-4">
+              <p className="text-sm text-gray-600">
+                Выберите дни недели и уроки, за которыми должен быть закреплен этот предмет. 
+                При генерации расписания предмет будет размещен только в выбранных слотах.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-7 gap-2 mb-6">
+              {/* Заголовки дней */}
+              <div></div>
+              {DAYS_OF_WEEK.map((day, index) => (
+                <div key={index} className="text-center text-sm font-medium text-gray-700 p-2">
+                  {day}
+                </div>
+              ))}
+              
+              {/* Сетка уроков и дней */}
+              {LESSONS.map(lesson => (
+                <React.Fragment key={lesson}>
+                  <div className="text-center text-sm font-medium text-gray-700 p-2 border-r">
+                    {lesson}
+                  </div>
+                  {DAYS_OF_WEEK.map((_, dayIndex) => {
+                    const isFixed = fixedSlots.some(s => s.day === dayIndex && s.lesson === lesson)
+                    return (
+                      <button
+                        key={`${dayIndex}-${lesson}`}
+                        onClick={() => handleToggleFixedSlot(dayIndex, lesson)}
+                        className={`p-2 text-xs border rounded transition-colors ${
+                          isFixed
+                            ? 'bg-orange-500 text-white border-orange-500'
+                            : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                        }`}
+                      >
+                        {isFixed ? '✓' : ''}
+                      </button>
+                    )
+                  })}
+                </React.Fragment>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-600">
+                Выбрано слотов: {fixedSlots.length}
+              </div>
+              <div className="flex space-x-3">
+                <button
+                  onClick={handleCloseFixationModal}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Отмена
+                </button>
+                <button
+                  onClick={handleSaveFixation}
+                  className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+                >
+                  Сохранить
+                </button>
               </div>
             </div>
           </div>

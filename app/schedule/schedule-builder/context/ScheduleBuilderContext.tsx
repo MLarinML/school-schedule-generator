@@ -33,6 +33,10 @@ export interface Subject {
   name: string
   difficulty?: 'easy' | 'medium' | 'hard'
   isGrouped: boolean
+  fixedSlots?: {
+    day: number // 0-5 (понедельник-суббота)
+    lesson: number // 1-8
+  }[]
 }
 
 export interface Class {

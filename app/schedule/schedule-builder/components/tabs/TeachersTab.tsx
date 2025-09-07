@@ -438,7 +438,7 @@ export const TeachersTab = ({ onUpdateStatus }: TeachersTabProps) => {
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="max-w-7xl mx-auto">
       <div className="mb-8">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">
           Управление учителями

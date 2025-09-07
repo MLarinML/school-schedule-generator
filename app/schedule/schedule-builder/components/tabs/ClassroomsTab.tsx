@@ -363,7 +363,7 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="max-w-7xl mx-auto">
       <div className="mb-8">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">
           Управление кабинетами
@@ -474,7 +474,9 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
               Поддерживаемые предметы
             </label>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-              {data.subjects.map(subject => (
+              {data.subjects
+                .sort((a, b) => a.name.localeCompare(b.name, 'ru'))
+                .map(subject => (
                 <label key={subject.id} className="flex items-center space-x-2 cursor-pointer">
                   <input
                     type="checkbox"
@@ -697,7 +699,9 @@ export const ClassroomsTab = ({ onUpdateStatus }: ClassroomsTabProps) => {
                   <div className="mt-1">
                     <div className="text-xs text-gray-600 mb-1">Предметы:</div>
                     <div className="max-h-20 overflow-y-auto">
-                      {data.subjects.map(subject => (
+                      {data.subjects
+                        .sort((a, b) => a.name.localeCompare(b.name, 'ru'))
+                        .map(subject => (
                         <label key={subject.id} className="flex items-center space-x-1 cursor-pointer">
                           <input
                             type="checkbox"

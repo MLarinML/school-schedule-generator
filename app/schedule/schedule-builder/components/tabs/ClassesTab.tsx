@@ -395,33 +395,38 @@ const ClassesTab: React.FC = () => {
     const classItem = data.classes.find(c => c.id === classId)
     if (!classItem) return data.subjects
 
-    return data.subjects.filter(subject => 
-      !classItem.subjects[subject.id] && 
-      subject.name.toLowerCase().includes(subjectSearchTerm.toLowerCase())
-    )
+    return data.subjects
+      .filter(subject => 
+        !classItem.subjects[subject.id] && 
+        subject.name.toLowerCase().includes(subjectSearchTerm.toLowerCase())
+      )
+      .sort((a, b) => a.name.localeCompare(b.name, 'ru'))
   }
 
   const getClassSubjects = (classId: string) => {
     const classItem = data.classes.find(c => c.id === classId)
     if (!classItem) return []
 
-    return Object.entries(classItem.subjects).map(([subjectId, subjectData]) => {
-      const subject = data.subjects.find(s => s.id === subjectId)
-      if (!subject) return null
-      
-      const isNewFormat = typeof subjectData === 'object'
-      const load = isNewFormat ? subjectData.load : subjectData
-      const teacherId = isNewFormat ? subjectData.teacherId : undefined
-      const groups = isNewFormat ? subjectData.groups : undefined
-      
-      return { 
-        ...subject, 
-        load, 
-        teacherId, 
-        groups,
-        subjectData: isNewFormat ? subjectData : { load, teacherId: undefined, groups: undefined }
-      }
-    }).filter(Boolean)
+    return Object.entries(classItem.subjects)
+      .map(([subjectId, subjectData]) => {
+        const subject = data.subjects.find(s => s.id === subjectId)
+        if (!subject) return null
+        
+        const isNewFormat = typeof subjectData === 'object'
+        const load = isNewFormat ? subjectData.load : subjectData
+        const teacherId = isNewFormat ? subjectData.teacherId : undefined
+        const groups = isNewFormat ? subjectData.groups : undefined
+        
+        return { 
+          ...subject, 
+          load, 
+          teacherId, 
+          groups,
+          subjectData: isNewFormat ? subjectData : { load, teacherId: undefined, groups: undefined }
+        }
+      })
+      .filter(Boolean)
+      .sort((a, b) => a!.name.localeCompare(b!.name, 'ru'))
   }
 
   return (
@@ -854,22 +859,26 @@ const ClassesTab: React.FC = () => {
                     />
                   </div>
                   
-                  <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
+                  <div className="grid grid-cols-2 gap-1 max-h-32 overflow-y-auto">
                     {getAvailableSubjects(classItem.id).map((subject) => (
                       <button
                         key={subject.id}
                         onClick={() => handleAddSubjectToClass(classItem.id, subject.id)}
-                        className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-primary-100 hover:text-primary-700 transition-colors flex items-center space-x-1"
+                        className="px-2 py-1.5 text-xs bg-gray-100 text-gray-700 rounded hover:bg-primary-100 hover:text-primary-700 transition-colors flex items-center space-x-1 text-left"
                       >
-                        <Plus className="w-3 h-3" />
-                        <span>{subject.name}</span>
+                        <Plus className="w-3 h-3 flex-shrink-0" />
+                        <span className="truncate">{subject.name}</span>
                       </button>
                     ))}
                     {getAvailableSubjects(classItem.id).length === 0 && subjectSearchTerm && (
-                      <p className="text-xs text-gray-500">Предметы не найдены</p>
+                      <div className="col-span-2 text-center">
+                        <p className="text-xs text-gray-500">Предметы не найдены</p>
+                      </div>
                     )}
                     {getAvailableSubjects(classItem.id).length === 0 && !subjectSearchTerm && (
-                      <p className="text-xs text-gray-500">Все предметы уже добавлены</p>
+                      <div className="col-span-2 text-center">
+                        <p className="text-xs text-gray-500">Все предметы уже добавлены</p>
+                      </div>
                     )}
                   </div>
                 </div>

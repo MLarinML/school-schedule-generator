@@ -2333,7 +2333,7 @@ export const GenerationTab = ({ onUpdateStatus }: GenerationTabProps) => {
                             
                             
                             {/* Дополнительная информация */}
-                            {(conflict.className || conflict.teacherName || conflict.subjectName || conflict.day) && (
+                            {false && (
                               <div className="mt-2 flex flex-wrap gap-2">
                                 {conflict.className && (
                                   <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">

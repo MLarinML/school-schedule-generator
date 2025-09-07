@@ -1,4 +1,4 @@
-export { default as initDb } from './init-db'
-export { default as seedDb } from './seed'
-export { default as testPassword } from './test-password'
+export * from './init-db'
+export * from './seed'
+export * from './test-password'
 

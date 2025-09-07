@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Получаем IP адрес
-    const ip = request.ip || request.headers.get('x-forwarded-for') || 'unknown'
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
 
     // Помечаем сессию как отозванную
     await prisma.session.update({
@@ -103,7 +103,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Получаем IP адрес
-    const ip = request.ip || request.headers.get('x-forwarded-for') || 'unknown'
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
 
     // Отзываем все сессии пользователя
     await prisma.session.updateMany({

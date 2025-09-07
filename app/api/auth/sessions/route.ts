@@ -132,7 +132,7 @@ export async function DELETE(request: NextRequest) {
       data: {
         userId: payload.userId,
         type: 'LOGOUT',
-        ip: request.ip || request.headers.get('x-forwarded-for') || 'unknown',
+        ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
         userAgent: request.headers.get('user-agent') || undefined,
         metadata: JSON.stringify({ 
           action: 'terminate_session',
